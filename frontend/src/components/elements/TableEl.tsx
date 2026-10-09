@@ -14,8 +14,14 @@ const SAMPLE_ITEMS: Record<string, string>[] = [
 ];
 const SAMPLE_ROWS = Array.from({ length: ITEMS_TABLE_SAMPLE_ROWS }, (_, i) => SAMPLE_ITEMS[i % SAMPLE_ITEMS.length]);
 
-export const TableEl = React.forwardRef<HTMLDivElement, ElementProps<"items_table">>(({ element, ...domProps }, ref) => {
+// One line item as shown in the table (all values already formatted)
+export type TableRow = Record<string, string>;
+
+// `rows` are the receipt's line items (Generate preview); without them the editor
+// shows sample rows.
+export const TableEl = React.forwardRef<HTMLDivElement, ElementProps<"items_table"> & { rows?: TableRow[] }>(({ element, rows, ...domProps }, ref) => {
   const { props } = element;
+  const bodyRows = rows ?? SAMPLE_ROWS;
   const lineBox = Math.ceil(props.fontSize * props.lineHeight);
   const rowHeight = tableRowHeight(props);
 
@@ -66,10 +72,10 @@ export const TableEl = React.forwardRef<HTMLDivElement, ElementProps<"items_tabl
           </tr>
         </thead>
         <tbody>
-          {SAMPLE_ROWS.map((row, rIdx) => (
+          {bodyRows.map((row, rIdx) => (
             <tr key={rIdx} style={{ height: `${rowHeight}px` }}>
               {props.columns.map((col, cIdx) => (
-                <td key={cIdx} style={cellStyle(col.align, rIdx < SAMPLE_ROWS.length - 1 ? rowDivider : null)}>
+                <td key={cIdx} style={cellStyle(col.align, rIdx < bodyRows.length - 1 ? rowDivider : null)}>
                   {row[col.key] || "-"}
                 </td>
               ))}

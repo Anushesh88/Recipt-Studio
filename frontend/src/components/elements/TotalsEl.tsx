@@ -2,15 +2,20 @@ import React from "react";
 import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
 import { fontStack } from "../../lib/units";
 
-export const TotalsEl = React.forwardRef<HTMLDivElement, ElementProps<"totals">>(({ element, ...domProps }, ref) => {
+export type TotalsValues = Record<"subtotal" | "tax" | "discount" | "total", string>;
+
+// Placeholder amounts for the editor (they match TableEl's sample rows)
+const SAMPLE_TOTALS: TotalsValues = {
+  subtotal: "35.00",
+  tax: "2.80",
+  discount: "0.00",
+  total: "37.80",
+};
+
+// `values` are the receipt's computed totals (Generate preview)
+export const TotalsEl = React.forwardRef<HTMLDivElement, ElementProps<"totals"> & { values?: TotalsValues }>(({ element, values, ...domProps }, ref) => {
   const { props } = element;
-  
-  const dummyValues: Record<string, string> = {
-    subtotal: "35.00",
-    tax: "2.80",
-    discount: "0.00",
-    total: "37.80",
-  };
+  const amounts = values ?? SAMPLE_TOTALS;
 
   const labels: Record<string, string> = {
     subtotal: "Subtotal",
@@ -42,7 +47,7 @@ export const TotalsEl = React.forwardRef<HTMLDivElement, ElementProps<"totals">>
             }}
           >
             <span>{labels[field]}</span>
-            <span>{props.currencySymbol}{dummyValues[field]}</span>
+            <span>{props.currencySymbol}{amounts[field]}</span>
           </div>
         ))}
       </div>

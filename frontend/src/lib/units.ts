@@ -1,4 +1,4 @@
-import type { CanvasElement, pageConfigSchema } from "../schema/templateSchema";
+import type { Canvas, CanvasElement, pageConfigSchema } from "../schema/templateSchema";
 import { z } from "zod";
 import { tableHeight } from "./layout";
 
@@ -112,6 +112,9 @@ export const PAGE_PRESETS: Record<PagePreset, z.infer<typeof pageConfigSchema>> 
 };
 
 export const DEFAULT_PAGE = PAGE_PRESETS.thermal80;
+
+export const BLANK_CANVAS: Canvas = { schemaVersion: 1, page: DEFAULT_PAGE, elements: [] };
+export const UNTITLED_TEMPLATE = "Untitled receipt";
 
 export const PAGE_PRESET_LABELS: Record<PagePreset, string> = {
   thermal80: "Thermal 80 mm (auto height)",

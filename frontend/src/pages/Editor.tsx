@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
+import React, { useEffect, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -11,16 +11,20 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { Link } from "react-router-dom";
-import { ChevronLeft } from "lucide-react";
+import { Link, useLocation, useParams } from "react-router-dom";
+import { ChevronLeft, X } from "lucide-react";
 import { Palette, PaletteDragPreview } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
 import { Inspector } from "../components/inspector/Inspector";
+import { DocumentBar } from "../components/editor/DocumentBar";
+import { useTemplatePersistence } from "../components/editor/useTemplatePersistence";
 import { useEditorStore } from "../store/editorStore";
-import { DEFAULT_ELEMENTS, GRID_SIZE, TOAST_DURATION_MS } from "../lib/units";
+import { useTemplate } from "../api/templates";
+import { apiErrorMessage } from "../api/client";
+import { BLANK_CANVAS, DEFAULT_ELEMENTS, GRID_SIZE, TOAST_DURATION_MS, UNTITLED_TEMPLATE } from "../lib/units";
 import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
-import type { CanvasElement } from "../schema/templateSchema";
+import { canvasSchema, type Canvas as CanvasDocument, type CanvasElement } from "../schema/templateSchema";
 
 if (typeof window !== "undefined") {
   (window as unknown as Window & { __editorStore?: typeof useEditorStore }).__editorStore = useEditorStore;
@@ -44,7 +48,18 @@ const snapTopLeftToCursor: Modifier = ({ activatorEvent, draggingNodeRect, trans
   };
 };
 
-export const Editor: React.FC = () => {
+interface WorkspaceProps {
+  templateId: string | undefined;
+  // Stays the same across the URL change after a first save, so the workspace
+  // (and its undo history) isn't remounted
+  workspaceKey: string;
+  initialName: string;
+  initialCanvas: CanvasDocument;
+}
+
+const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, initialName, initialCanvas }) => {
+  const loadTemplate = useEditorStore((state) => state.loadTemplate);
+  const selectElement = useEditorStore((state) => state.selectElement);
   const addElement = useEditorStore((state) => state.addElement);
   const elements = useEditorStore((state) => state.elements);
   const page = useEditorStore((state) => state.page);
@@ -55,6 +70,17 @@ export const Editor: React.FC = () => {
   const deleteElement = useEditorStore((state) => state.deleteElement);
   const selectedId = useEditorStore((state) => state.selectedId);
   const reorderElement = useEditorStore((state) => state.reorderElement);
+
+  const persistence = useTemplatePersistence({ templateId, workspaceKey, initialName, initialCanvas });
+  const { save, dirty } = persistence;
+
+  // Put the (already validated) template into the store once, on mount
+  const loaded = useRef(false);
+  useLayoutEffect(() => {
+    if (loaded.current) return;
+    loaded.current = true;
+    loadTemplate(initialCanvas);
+  }, [initialCanvas, loadTemplate]);
 
   const [toast, setToast] = useState<string | null>(null);
   const [draggingType, setDraggingType] = useState<CanvasElement["type"] | null>(null);
@@ -136,6 +162,12 @@ export const Editor: React.FC = () => {
   };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    // Save works from anywhere, including while typing in a field
+    if (e.key.toLowerCase() === "s" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      void save();
+      return;
+    }
     // Leave keys alone while typing or using the inspector / menus, so e.g.
     // Backspace in a field or on a dropdown never deletes the selected element
     if (e.target instanceof Element && e.target.closest(SHORTCUT_EXEMPT_SELECTOR)) {
@@ -159,7 +191,7 @@ export const Editor: React.FC = () => {
     } else if (e.key === "[" && (e.ctrlKey || e.metaKey)) {
       if (selectedId) reorderElement(selectedId, "down");
     }
-  }, [selectedId, deleteElement, undo, redo, reorderElement]);
+  }, [selectedId, deleteElement, undo, redo, reorderElement, save]);
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
@@ -181,12 +213,26 @@ export const Editor: React.FC = () => {
       <div className="flex h-screen w-full flex-col overflow-hidden">
         <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <Link to="/templates" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+            <Link
+              to="/templates"
+              className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+              onClick={(e) => {
+                if (dirty && !window.confirm("Leave without saving? Your changes will be lost.")) e.preventDefault();
+              }}
+            >
               <ChevronLeft className="size-4" />
               Templates
             </Link>
             <div className="w-px h-6 bg-gray-300" />
-            <h1 className="font-bold text-lg">Receipt Studio · Editor</h1>
+            <h1 className="sr-only">Receipt Studio editor</h1>
+            <DocumentBar
+              templateId={templateId}
+              name={persistence.name}
+              onNameChange={persistence.setName}
+              dirty={dirty}
+              saving={persistence.saving}
+              onSave={(asNew) => void save(asNew)}
+            />
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{Math.round(zoom * 100)}%</span>
@@ -201,7 +247,31 @@ export const Editor: React.FC = () => {
             <button onClick={redo} className="px-3 py-1 border rounded">Redo</button>
           </div>
         </header>
-        
+
+        {persistence.problem && (
+          <div role="alert" className="flex items-start justify-between gap-4 border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-800">
+            <div>
+              <p className="font-medium">{persistence.problem.message}</p>
+              {persistence.problem.issues.length > 0 && (
+                <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                  {persistence.problem.issues.map((issue, i) => (
+                    <li key={i}>
+                      {issue.elementId ? (
+                        <button type="button" className="text-left underline-offset-2 hover:underline" onClick={() => selectElement(issue.elementId!)}>
+                          {issue.message}
+                        </button>
+                      ) : issue.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <button type="button" aria-label="Dismiss" onClick={persistence.dismissProblem} className="text-red-700 hover:text-red-900">
+              <X className="size-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-1 overflow-hidden">
           <Palette />
           <Canvas />
@@ -225,4 +295,46 @@ export const Editor: React.FC = () => {
       </DragOverlay>
     </DndContext>
   );
+};
+
+const EditorMessage: React.FC<{ title: string; detail?: React.ReactNode }> = ({ title, detail }) => (
+  <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-center">
+    <h1 className="text-lg font-semibold">{title}</h1>
+    {detail && <div className="max-w-lg text-sm text-muted-foreground">{detail}</div>}
+    <Link to="/templates" className="text-sm text-blue-600 hover:underline">Back to templates</Link>
+  </div>
+);
+
+// /editor (new blank template) and /editor/:id. Templates from the server are
+// validated with the Zod schema before they reach the editor store.
+export const Editor: React.FC = () => {
+  const { id } = useParams();
+  const location = useLocation();
+  const workspaceKey = (location.state as { workspaceKey?: string } | null)?.workspaceKey ?? id ?? "new";
+  const query = useTemplate(id);
+  const parsed = useMemo(() => (query.data ? canvasSchema.safeParse(query.data.canvas) : null), [query.data]);
+
+  if (!id) {
+    return (
+      <EditorWorkspace key={workspaceKey} templateId={undefined} workspaceKey={workspaceKey} initialName={UNTITLED_TEMPLATE} initialCanvas={BLANK_CANVAS} />
+    );
+  }
+  // Once there's data, keep showing it even if a background refetch fails
+  if (query.data && parsed) {
+    if (!parsed.success) {
+      return (
+        <EditorMessage
+          title="This template can't be opened"
+          detail={<ul className="list-disc pl-5 text-left">{parsed.error.issues.map((i, n) => <li key={n}>{i.path.join(".")}: {i.message}</li>)}</ul>}
+        />
+      );
+    }
+    return (
+      <EditorWorkspace key={workspaceKey} templateId={id} workspaceKey={workspaceKey} initialName={query.data.name} initialCanvas={parsed.data} />
+    );
+  }
+  if (query.isError) {
+    return <EditorMessage title="Couldn't open this template" detail={apiErrorMessage(query.error, "It may have been deleted.")} />;
+  }
+  return <EditorMessage title="Loading template…" />;
 };
