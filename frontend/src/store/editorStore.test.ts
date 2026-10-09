@@ -110,6 +110,18 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().zoom).toBe(2.0);
   });
 
+  it("updateElementGeometry with only x/y leaves an off-grid size untouched", () => {
+    const el = { ...getDummyText(), width: 278, height: 30 };
+    useEditorStore.getState().addElement(el);
+    useEditorStore.getState().updateElementGeometry(el.id, { x: 8, y: 40 });
+
+    const moved = useEditorStore.getState().elements[0];
+    expect(moved.x).toBe(8);
+    expect(moved.y).toBe(40);
+    expect(moved.width).toBe(278); // was re-snapped to 280, overflowing a 302px page at x=24
+    expect(moved.height).toBe(30);
+  });
+
   it("updateElementGeometry saves exactly one snapshot", () => {
     const mockElement = getDummyText();
     useEditorStore.getState().addElement(mockElement);

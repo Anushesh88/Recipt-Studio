@@ -13,6 +13,12 @@ export const BaseElementWrapper = React.forwardRef<HTMLDivElement, {
     <div
       ref={ref}
       id={element.id}
+      data-element-id={element.id}
+      data-type={element.type}
+      data-x={element.x}
+      data-y={element.y}
+      data-width={element.width}
+      data-height={element.height}
       className={`absolute select-none ${className}`}
       onPointerDown={onPointerDown}
       onClick={onClick}
@@ -20,7 +26,7 @@ export const BaseElementWrapper = React.forwardRef<HTMLDivElement, {
         left: `${element.x}px`,
         top: `${element.y}px`,
         width: `${element.width}px`,
-        height: `${element.height}px`,
+        height: `${Math.max(element.height, 8)}px`,
         zIndex: element.zIndex,
         overflow: "hidden",
       }}

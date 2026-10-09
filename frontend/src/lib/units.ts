@@ -4,6 +4,12 @@ import { z } from "zod";
 export const GRID_SIZE = 4;
 export const MAX_ELEMENTS = 100;
 export const MAX_HISTORY = 50;
+// Matches the schema's width/height >= 8 rule
+export const MIN_ELEMENT_SIZE = 8;
+
+export const ZOOM_MIN = 0.25;
+export const ZOOM_MAX = 3;
+export const ZOOM_SENSITIVITY = 0.0015;
 
 export type PagePreset = z.infer<typeof pageConfigSchema>["preset"];
 
@@ -117,7 +123,7 @@ export const DEFAULT_ELEMENTS: Record<CanvasElement["type"], Omit<CanvasElement,
   },
   divider: {
     width: 278,
-    height: 2,
+    height: MIN_ELEMENT_SIZE, // line is drawn centered; box must still pass schema min size
     locked: false,
     props: {
       style: "dashed",

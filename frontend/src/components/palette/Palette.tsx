@@ -1,6 +1,7 @@
 import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import type { CanvasElement } from "../../schema/templateSchema";
+import { DEFAULT_ELEMENTS } from "../../lib/units";
 import { Type, Image, Table, Calculator, QrCode, PenTool, Minus } from "lucide-react";
 
 const PALETTE_ITEMS: { type: CanvasElement["type"]; label: string; icon: React.ReactNode }[] = [
@@ -30,6 +31,25 @@ const PaletteItem: React.FC<{ item: typeof PALETTE_ITEMS[0] }> = ({ item }) => {
     >
       {item.icon}
       <span className="text-sm font-medium">{item.label}</span>
+    </div>
+  );
+};
+
+// Ghost that follows the cursor while dragging from the palette. Its top-left is
+// where the element will land, drawn at the element's default size and current zoom.
+export const PaletteDragPreview: React.FC<{ type: CanvasElement["type"]; zoom: number }> = ({ type, zoom }) => {
+  const item = PALETTE_ITEMS.find((i) => i.type === type);
+  const { width, height } = DEFAULT_ELEMENTS[type];
+
+  return (
+    <div
+      style={{ width: `${width * zoom}px`, height: `${height * zoom}px` }}
+      className="border-2 border-dashed border-blue-500 bg-blue-500/10 pointer-events-none"
+    >
+      <div className="flex items-center gap-1 px-1 text-xs font-medium text-blue-700 whitespace-nowrap">
+        {item?.icon}
+        <span>{item?.label}</span>
+      </div>
     </div>
   );
 };

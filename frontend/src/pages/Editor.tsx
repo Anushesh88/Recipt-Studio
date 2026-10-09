@@ -1,16 +1,45 @@
-import React, { useEffect, useCallback, useState } from "react";
-import { DndContext, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { Palette } from "../components/palette/Palette";
+import React, { useEffect, useCallback, useRef, useState } from "react";
+import {
+  DndContext,
+  DragOverlay,
+  pointerWithin,
+  type DragEndEvent,
+  type DragStartEvent,
+  type Modifier,
+  MouseSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import { Palette, PaletteDragPreview } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
 import { useEditorStore } from "../store/editorStore";
 import { DEFAULT_ELEMENTS, GRID_SIZE } from "../lib/units";
-import { computeDropCoords } from "../lib/canvasUtils";
+import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
 import type { CanvasElement } from "../schema/templateSchema";
+
+if (typeof window !== "undefined") {
+  (window as unknown as Window & { __editorStore?: typeof useEditorStore }).__editorStore = useEditorStore;
+}
+
+// Pins the drag preview's top-left to the cursor, which is exactly where the
+// element lands on drop (instead of wherever the palette tile was grabbed).
+const snapTopLeftToCursor: Modifier = ({ activatorEvent, draggingNodeRect, transform }) => {
+  if (!activatorEvent || !draggingNodeRect) return transform;
+  const pointer = getEventClientCoords(activatorEvent);
+  if (!pointer) return transform;
+  return {
+    ...transform,
+    x: transform.x + pointer.x - draggingNodeRect.left,
+    y: transform.y + pointer.y - draggingNodeRect.top,
+  };
+};
 
 export const Editor: React.FC = () => {
   const addElement = useEditorStore((state) => state.addElement);
   const elements = useEditorStore((state) => state.elements);
+  const page = useEditorStore((state) => state.page);
   const zoom = useEditorStore((state) => state.zoom);
   const setZoom = useEditorStore((state) => state.setZoom);
   const undo = useEditorStore((state) => state.undo);
@@ -20,13 +49,41 @@ export const Editor: React.FC = () => {
   const reorderElement = useEditorStore((state) => state.reorderElement);
 
   const [toast, setToast] = useState<string | null>(null);
+  const [draggingType, setDraggingType] = useState<CanvasElement["type"] | null>(null);
+  // Live pointer position during a palette drag. DragEndEvent.delta can't be used:
+  // dnd-kit folds the canvas scroll container's offsets into it, which threw drops
+  // hundreds of px away from the cursor.
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
   );
 
+  useEffect(() => {
+    if (!draggingType) return;
+    const trackPointer = (ev: Event) => {
+      const coords = getEventClientCoords(ev);
+      if (coords) pointerRef.current = coords;
+    };
+    window.addEventListener("pointermove", trackPointer);
+    window.addEventListener("touchmove", trackPointer);
+    return () => {
+      window.removeEventListener("pointermove", trackPointer);
+      window.removeEventListener("touchmove", trackPointer);
+    };
+  }, [draggingType]);
+
+  const handleDragStart = (e: DragStartEvent) => {
+    const type = e.active.data.current?.type as CanvasElement["type"] | undefined;
+    pointerRef.current = getEventClientCoords(e.activatorEvent);
+    setDraggingType(type ?? null);
+  };
+
   const handleDragEnd = (e: DragEndEvent) => {
+    setDraggingType(null);
+    const pointer = pointerRef.current;
+    pointerRef.current = null;
     const { active, over } = e;
     if (!over || over.id !== "canvas") return;
 
@@ -44,11 +101,12 @@ export const Editor: React.FC = () => {
       return;
     }
 
-    if (!active.rect.current.translated || !over.rect) return;
+    // Drop point = where the pointer was released
+    if (!pointer || !over.rect) return;
 
-    const { x, y } = computeDropCoords(
-      active.rect.current.translated.left,
-      active.rect.current.translated.top,
+    const dropped = computeDropCoords(
+      pointer.x,
+      pointer.y,
       over.rect.left,
       over.rect.top,
       zoom,
@@ -56,6 +114,7 @@ export const Editor: React.FC = () => {
     );
 
     const defaults = DEFAULT_ELEMENTS[type];
+    const { x, y } = clampToPage(dropped.x, dropped.y, defaults.width, defaults.height, page, GRID_SIZE);
     const newElement: CanvasElement = {
       id: generateId(),
       type,
@@ -98,14 +157,28 @@ export const Editor: React.FC = () => {
   }, [handleKeyDown]);
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <DndContext
+      sensors={sensors}
+      // Drops are positioned at the pointer, so "over the canvas" must mean the pointer is over it
+      collisionDetection={pointerWithin}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragCancel={() => {
+        setDraggingType(null);
+        pointerRef.current = null;
+      }}
+    >
       <div className="flex h-screen w-full flex-col overflow-hidden">
         <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between shrink-0">
           <h1 className="font-bold text-lg">Receipt Studio - Editor (Phase 2)</h1>
           <div className="flex items-center gap-2">
-            <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} className="px-2 py-1 border rounded">-</button>
-            <span className="text-sm">{Math.round(zoom * 100)}%</span>
-            <button onClick={() => setZoom(Math.min(2, zoom + 0.1))} className="px-2 py-1 border rounded">+</button>
+            <span className="text-sm font-medium text-gray-700">{Math.round(zoom * 100)}%</span>
+            <button
+              onClick={() => setZoom(1)}
+              className="px-2 py-1 text-xs border rounded bg-gray-50 hover:bg-gray-100 font-medium"
+            >
+              100%
+            </button>
             <div className="w-px h-6 bg-gray-300 mx-2" />
             <button onClick={undo} className="px-3 py-1 border rounded">Undo</button>
             <button onClick={redo} className="px-3 py-1 border rounded">Redo</button>
@@ -129,6 +202,10 @@ export const Editor: React.FC = () => {
           </div>
         )}
       </div>
+
+      <DragOverlay dropAnimation={null} modifiers={[snapTopLeftToCursor]}>
+        {draggingType ? <PaletteDragPreview type={draggingType} zoom={zoom} /> : null}
+      </DragOverlay>
     </DndContext>
   );
 };

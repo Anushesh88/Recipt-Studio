@@ -1,112 +1,198 @@
-import React, { useRef } from "react";
+import React, { useState, useRef, useLayoutEffect } from "react";
 import Moveable from "react-moveable";
 import { useEditorStore } from "../../store/editorStore";
 import { TextEl, ImageEl, TableEl, TotalsEl, QrEl, SignatureEl, DividerEl } from "../elements";
+import { MIN_ELEMENT_SIZE } from "../../lib/units";
+
+const ALL_DIRECTIONS = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
+// A divider is only a few px tall, so n/s/corner handles would cover its whole
+// hit area and make it impossible to grab or click. Width is the only useful axis.
+const DIVIDER_DIRECTIONS = ["w", "e"];
 
 export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) => {
   const element = useEditorStore((state) => state.elements.find((e) => e.id === id));
   const isSelected = useEditorStore((state) => state.selectedId === id);
   const selectElement = useEditorStore((state) => state.selectElement);
-  const moveElement = useEditorStore((state) => state.moveElement);
   const updateElementGeometry = useEditorStore((state) => state.updateElementGeometry);
+  const page = useEditorStore((state) => state.page);
   const zoom = useEditorStore((state) => state.zoom);
-  
-  const targetRef = useRef<HTMLDivElement>(null);
+
+  // Hold target in React state so Moveable immediately mounts once DOM node exists
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  const moveableRef = useRef<Moveable>(null);
+
+  // Synchronize Moveable rect on store updates
+  useLayoutEffect(() => {
+    if (isSelected && moveableRef.current) {
+      moveableRef.current.updateRect();
+    }
+  }, [isSelected, element?.x, element?.y, element?.width, element?.height]);
 
   if (!element) return null;
 
-  let ElNode: React.ReactNode = null;
-  const props = { 
-    element: element as never, 
-    ref: targetRef, 
-    className: isSelected ? "ring-2 ring-blue-500" : "",
-    onPointerDown: (e: React.PointerEvent) => {
-      e.stopPropagation();
-      selectElement(element.id);
-    },
-    onClick: (e: React.MouseEvent) => {
-      e.stopPropagation();
-    }
+  const handleSelect = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    selectElement(element.id);
   };
 
+  const commonProps = {
+    ref: setTarget,
+    className: isSelected ? "ring-2 ring-blue-500" : "",
+    onPointerDown: handleSelect,
+    onClick: handleSelect,
+  };
+
+  let ElNode: React.ReactNode = null;
   switch (element.type) {
     case "text":
-      ElNode = <TextEl {...props} />;
+      ElNode = <TextEl element={element} {...commonProps} />;
       break;
     case "image":
-      ElNode = <ImageEl {...props} />;
+      ElNode = <ImageEl element={element} {...commonProps} />;
       break;
     case "items_table":
-      ElNode = <TableEl {...props} />;
+      ElNode = <TableEl element={element} {...commonProps} />;
       break;
     case "totals":
-      ElNode = <TotalsEl {...props} />;
+      ElNode = <TotalsEl element={element} {...commonProps} />;
       break;
     case "qr":
-      ElNode = <QrEl {...props} />;
+      ElNode = <QrEl element={element} {...commonProps} />;
       break;
     case "signature":
-      ElNode = <SignatureEl {...props} />;
+      ElNode = <SignatureEl element={element} {...commonProps} />;
       break;
     case "divider":
-      ElNode = <DividerEl {...props} />;
+      ElNode = <DividerEl element={element} {...commonProps} />;
       break;
   }
 
   return (
     <>
       {ElNode}
-      {isSelected && (
+      {isSelected && target && (
         <Moveable
-          target={targetRef.current}
+          key={element.id}
+          ref={moveableRef}
+          target={target}
           draggable={true}
           resizable={true}
           snappable={true}
+          bounds={{ left: 0, top: 0, right: page.width, bottom: page.height }}
           zoom={zoom}
-          // react-moveable modifies the DOM directly; we want to catch the end event and sync to store
-          // Alternatively, we can use onDrag/onResize to sync live, but zustand updates might be fast enough.
+          throttleDrag={4}
+          throttleResize={4}
+          keepRatio={false}
+          origin={false}
+          renderDirections={element.type === "divider" ? DIVIDER_DIRECTIONS : ALL_DIRECTIONS}
           onDrag={(e) => {
-            e.target.style.transform = e.transform; // visual feedback during drag
+            const [rawDx, rawDy] = e.beforeTranslate;
+            const candidateX = element.x + rawDx;
+            const candidateY = element.y + rawDy;
+
+            const snappedX = Math.round(candidateX / 4) * 4;
+            const snappedY = Math.round(candidateY / 4) * 4;
+
+            const maxX = page.width - element.width;
+            const clampedX = Math.max(0, Math.min(snappedX, maxX));
+
+            const maxY = page.height - element.height;
+            const clampedY = Math.max(0, Math.min(snappedY, maxY));
+
+            const actualDx = clampedX - element.x;
+            const actualDy = clampedY - element.y;
+
+            e.target.style.transform = `translate(${actualDx}px, ${actualDy}px)`;
           }}
           onDragEnd={(e) => {
-            // Extract translate from transform
             const style = e.target.style.transform;
             const match = style.match(/translate\((.+?)px,\s*(.+?)px\)/);
             if (match) {
               const dx = parseFloat(match[1]);
               const dy = parseFloat(match[2]);
-              moveElement(element.id, element.x + dx, element.y + dy);
-              e.target.style.transform = "none";
+              if (!isNaN(dx) && !isNaN(dy) && (dx !== 0 || dy !== 0)) {
+                updateElementGeometry(element.id, {
+                  x: element.x + dx,
+                  y: element.y + dy,
+                });
+              }
             }
+            // Only clear the live transform. left/top/width/height belong to React:
+            // a plain click fires dragEnd with no movement, the store doesn't change,
+            // React doesn't re-render, and wiping them would detach the DOM from the store.
+            e.target.style.transform = "";
           }}
           onResize={(e) => {
-            e.target.style.width = `${e.width}px`;
-            e.target.style.height = `${e.height}px`;
-            e.target.style.transform = e.drag.transform;
+            const match = e.drag.transform.match(/translate\((.+?)px,\s*(.+?)px\)/);
+            let rawDx = 0;
+            let rawDy = 0;
+            if (match) {
+              rawDx = parseFloat(match[1]);
+              rawDy = parseFloat(match[2]);
+            }
+
+            let candidateX = element.x + rawDx;
+            let candidateY = element.y + rawDy;
+            let candidateW = Math.max(8, e.width);
+            let candidateH = Math.max(8, e.height);
+
+            let snappedX = Math.round(candidateX / 4) * 4;
+            let snappedY = Math.round(candidateY / 4) * 4;
+            let snappedW = Math.round(candidateW / 4) * 4;
+            let snappedH = Math.round(candidateH / 4) * 4;
+
+            if (snappedX < 0) {
+              snappedW = Math.max(8, snappedW + snappedX);
+              snappedX = 0;
+            }
+            if (snappedX + snappedW > page.width) {
+              snappedW = Math.max(8, page.width - snappedX);
+            }
+
+            if (snappedY < 0) {
+              snappedH = Math.max(8, snappedH + snappedY);
+              snappedY = 0;
+            }
+            if (snappedY + snappedH > page.height) {
+              snappedH = Math.max(8, page.height - snappedY);
+            }
+
+            const actualDx = snappedX - element.x;
+            const actualDy = snappedY - element.y;
+
+            e.target.style.width = `${snappedW}px`;
+            e.target.style.height = `${snappedH}px`;
+            e.target.style.transform = `translate(${actualDx}px, ${actualDy}px)`;
           }}
           onResizeEnd={(e) => {
-            const width = parseFloat(e.target.style.width);
-            const height = parseFloat(e.target.style.height);
-            // Also need to move if resized from top/left
+            const width = parseFloat(e.target.style.width) || element.width;
+            const height = parseFloat(e.target.style.height) || element.height;
             const style = e.target.style.transform;
-            let dx = 0, dy = 0;
+            let dx = 0;
+            let dy = 0;
             const match = style.match(/translate\((.+?)px,\s*(.+?)px\)/);
             if (match) {
               dx = parseFloat(match[1]);
               dy = parseFloat(match[2]);
             }
-            
-            const newX = element.x + dx;
-            const newY = element.y + dy;
-            
-            updateElementGeometry(element.id, { x: newX, y: newY, width, height });
-            e.target.style.transform = "none";
+
+            const changed = dx !== 0 || dy !== 0 || width !== element.width || height !== element.height;
+            if (changed) {
+              updateElementGeometry(element.id, {
+                x: element.x + dx,
+                y: element.y + dy,
+                width,
+                height,
+              });
+            }
+
+            // Write back the committed size rather than clearing it: if the store
+            // value didn't change, React won't re-apply it on its own.
+            const committed = useEditorStore.getState().elements.find((el) => el.id === element.id) ?? element;
+            e.target.style.transform = "";
+            e.target.style.width = `${committed.width}px`;
+            e.target.style.height = `${Math.max(committed.height, MIN_ELEMENT_SIZE)}px`;
           }}
-          keepRatio={false}
-          throttleDrag={0}
-          throttleResize={0}
-          origin={false}
-          renderDirections={["nw", "n", "ne", "w", "e", "sw", "s", "se"]}
         />
       )}
     </>

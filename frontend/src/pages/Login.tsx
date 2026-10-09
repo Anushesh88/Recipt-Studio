@@ -24,13 +24,16 @@ export default function Login() {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
       setToken(res.data.access_token);
-    } catch (err: any) {
-      if (err.response?.data?.detail) {
-        const detail = err.response.data.detail;
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { detail?: unknown } } };
+      if (axiosErr.response?.data?.detail) {
+        const detail = axiosErr.response.data.detail;
         if (Array.isArray(detail)) {
-          setError(detail.map((d: any) => d.msg).join(', '));
-        } else {
+          setError(detail.map((d: { msg?: string }) => d.msg || '').join(', '));
+        } else if (typeof detail === 'string') {
           setError(detail);
+        } else {
+          setError('An error occurred');
         }
       } else {
         setError('An error occurred');

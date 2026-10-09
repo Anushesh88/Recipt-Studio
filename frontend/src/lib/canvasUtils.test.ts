@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeDropCoords } from "./canvasUtils";
+import { clampToPage, computeDropCoords, getEventClientCoords } from "./canvasUtils";
 
 describe("computeDropCoords", () => {
   it("computes correctly at zoom 1.0", () => {
@@ -26,5 +26,47 @@ describe("computeDropCoords", () => {
     const coords = computeDropCoords(50, 50, 100, 100, 1.0, 4);
     // would be -50, -50 => snapped to 0, 0
     expect(coords).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("clampToPage", () => {
+  const page = { width: 302, height: 400 };
+
+  it("leaves an in-bounds box untouched", () => {
+    expect(clampToPage(40, 40, 100, 30, page, 4)).toEqual({ x: 40, y: 40 });
+  });
+
+  it("pulls a box back inside the right and bottom edges, on grid", () => {
+    // 302 - 200 = 102 -> floored to grid = 100 (snapping up to 104 would overshoot)
+    // 400 - 30 = 370 -> floored to grid = 368
+    const { x, y } = clampToPage(244, 396, 200, 30, page, 4);
+    expect({ x, y }).toEqual({ x: 100, y: 368 });
+    expect(x + 200).toBeLessThanOrEqual(page.width);
+    expect(y + 30).toBeLessThanOrEqual(page.height);
+  });
+
+  it("pins a box larger than the page to the origin", () => {
+    expect(clampToPage(50, 50, 400, 500, page, 4)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe("getEventClientCoords", () => {
+  it("reads mouse/pointer events", () => {
+    const event = { clientX: 12, clientY: 34 } as unknown as Event;
+    expect(getEventClientCoords(event)).toEqual({ x: 12, y: 34 });
+  });
+
+  it("reads the first touch of touch events", () => {
+    const event = { touches: [{ clientX: 5, clientY: 6 }], changedTouches: [] } as unknown as Event;
+    expect(getEventClientCoords(event)).toEqual({ x: 5, y: 6 });
+  });
+
+  it("falls back to changedTouches on touchend", () => {
+    const event = { touches: [], changedTouches: [{ clientX: 7, clientY: 8 }] } as unknown as Event;
+    expect(getEventClientCoords(event)).toEqual({ x: 7, y: 8 });
+  });
+
+  it("returns null for events without coordinates", () => {
+    expect(getEventClientCoords({} as Event)).toBeNull();
   });
 });

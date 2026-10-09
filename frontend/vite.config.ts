@@ -6,6 +6,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   test: {
-    exclude: ['node_modules', 'dist', 'tests/editor.spec.ts']
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    exclude: ['tests/**/*.spec.ts', 'node_modules/**', 'e2e/**']
   }
 })

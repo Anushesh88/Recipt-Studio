@@ -155,8 +155,10 @@ export const useEditorStore = create<EditorState>()(
 
             el.x = snapToGrid(newX);
             el.y = snapToGrid(newY);
-            el.width = snapToGrid(newWidth);
-            el.height = snapToGrid(newHeight);
+            // Only snap sizes that are being changed: re-snapping an untouched off-grid
+            // size (e.g. the 278px table/divider) silently resized elements on a move.
+            el.width = geometry.width !== undefined ? snapToGrid(newWidth) : newWidth;
+            el.height = geometry.height !== undefined ? snapToGrid(newHeight) : newHeight;
           }
         }),
 
