@@ -1,3 +1,4 @@
+from datetime import timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -5,6 +6,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
 from app.core.db import get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
@@ -16,7 +18,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: AsyncSession = Depends(get_db)) -> User:
     from jose import JWTError, jwt
 
-    from app.core.config import settings
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -58,5 +59,9 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()], db: 
     if not user or not verify_password(form_data.password, user.password_hash):
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     
-    access_token = create_access_token(data={"email": user.email})
+    # Without an explicit delta the token defaulted to 15 minutes, not the configured week
+    access_token = create_access_token(
+        data={"email": user.email},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
     return {"access_token": access_token, "token_type": "bearer"}

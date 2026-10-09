@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
 
+    # Uploaded logos/signatures (PNG/JPG only, docs/01-prd.md)
+    ASSET_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "assets"
+    MAX_ASSET_BYTES: int = 2 * 1024 * 1024
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 settings = Settings()

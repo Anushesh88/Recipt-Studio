@@ -1,74 +1,58 @@
-import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from datetime import UTC, datetime, timedelta
 
-from app.core.db import get_db
-from app.main import app
-from app.models.base import Base
+from httpx import AsyncClient
+from jose import jwt
 
-# Create in-memory sqlite for testing
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
-
-engine = create_async_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
-TestingSessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-from collections.abc import AsyncGenerator
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 
 
-async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
-    async with TestingSessionLocal() as session:
-        yield session
+async def test_register_and_login(client: AsyncClient) -> None:
+    # Register user
+    response = await client.post(
+        "/auth/register",
+        json={"email": "test@example.com", "password": "password123"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "test@example.com"
+    assert "id" in data
 
-app.dependency_overrides[get_db] = override_get_db
+    # Login user
+    login_response = await client.post(
+        "/auth/login",
+        data={"username": "test@example.com", "password": "password123"},
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+    )
+    assert login_response.status_code == 200
+    login_data = login_response.json()
+    assert "access_token" in login_data
+    assert login_data["token_type"] == "bearer"
 
-@pytest_asyncio.fixture(autouse=True)
-async def prepare_database() -> AsyncGenerator[None, None]:
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
 
-@pytest.mark.asyncio
-async def test_register_and_login() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        # Register user
-        response = await ac.post(
-            "/auth/register",
-            json={"email": "test@example.com", "password": "password123"},
-        )
-        assert response.status_code == 200
-        data = response.json()
-        assert data["email"] == "test@example.com"
-        assert "id" in data
+async def test_register_duplicate_email(client: AsyncClient) -> None:
+    await client.post(
+        "/auth/register",
+        json={"email": "duplicate@example.com", "password": "password123"},
+    )
+    # Try registering again
+    response = await client.post(
+        "/auth/register",
+        json={"email": "duplicate@example.com", "password": "password123"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Email already registered"
 
-        # Login user
-        login_response = await ac.post(
-            "/auth/login",
-            data={"username": "test@example.com", "password": "password123"},
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-        )
-        assert login_response.status_code == 200
-        login_data = login_response.json()
-        assert "access_token" in login_data
-        assert login_data["token_type"] == "bearer"
 
-@pytest.mark.asyncio
-async def test_register_duplicate_email() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
-        await ac.post(
-            "/auth/register",
-            json={"email": "duplicate@example.com", "password": "password123"},
-        )
-        # Try registering again
-        response = await ac.post(
-            "/auth/register",
-            json={"email": "duplicate@example.com", "password": "password123"},
-        )
-        assert response.status_code == 400
-        assert response.json()["detail"] == "Email already registered"
+async def test_login_token_uses_configured_lifetime(client: AsyncClient) -> None:
+    await client.post(
+        "/auth/register", json={"email": "ttl@example.com", "password": "password123"}
+    )
+    response = await client.post(
+        "/auth/login", data={"username": "ttl@example.com", "password": "password123"}
+    )
+    claims = jwt.decode(
+        response.json()["access_token"], settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
+    )
+    lifetime = datetime.fromtimestamp(claims["exp"], UTC) - datetime.now(UTC)
+    # Previously 15 minutes regardless of ACCESS_TOKEN_EXPIRE_MINUTES
+    assert lifetime > timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES - 1)
