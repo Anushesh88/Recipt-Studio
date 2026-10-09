@@ -22,6 +22,37 @@ export const WORKSPACE_PAGE_ORIGIN = 1800;
 
 export const TOAST_DURATION_MS = 3000;
 
+// The curated 8 fonts (docs/03-schema.md). Six of the most-used sans-serifs plus
+// the most-used serif and monospace, which suit receipts. Mirrors FontFamily in
+// backend/app/schemas/canvas.py; the files are loaded by lib/fonts.ts.
+export const FONT_FAMILIES = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Montserrat",
+  "Lato",
+  "Poppins",
+  "Merriweather",
+  "Roboto Mono",
+] as const;
+export type FontFamily = (typeof FONT_FAMILIES)[number];
+
+const FONT_FALLBACKS: Partial<Record<FontFamily, string>> = {
+  Merriweather: "serif",
+  "Roboto Mono": "monospace",
+};
+
+// CSS font-family value with a generic fallback, e.g. `"Open Sans", sans-serif`
+export const fontStack = (family: string) =>
+  `"${family}", ${FONT_FALLBACKS[family as FontFamily] ?? "sans-serif"}`;
+
+export const FONT_WEIGHTS = [
+  { value: 400, label: "Regular" },
+  { value: 500, label: "Medium" },
+  { value: 600, label: "Semibold" },
+  { value: 700, label: "Bold" },
+] as const;
+
 // The editor shows the items table with this many placeholder rows; its default
 // height is exactly header + these rows, per the Layout Algorithm.
 export const ITEMS_TABLE_SAMPLE_ROWS = 3;

@@ -1,7 +1,7 @@
 import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
-import { ITEMS_TABLE_SAMPLE_ROWS } from "../../lib/units";
+import { ITEMS_TABLE_SAMPLE_ROWS, fontStack } from "../../lib/units";
 import { tableRowHeight } from "../../lib/layout";
 
 const DIVIDER_PX = 1;
@@ -43,7 +43,7 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
         style={{
           tableLayout: "fixed",
           width: "100%",
-          fontFamily: props.fontFamily,
+          fontFamily: fontStack(props.fontFamily),
           fontSize: `${props.fontSize}px`,
           color: props.color,
           borderCollapse: "separate",

@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from app.schemas.canvas import (
     MAX_CANVAS_BYTES,
     Canvas,
+    FontFamily,
     ItemsTableElement,
     ItemsTableProps,
     PageConfig,
@@ -109,3 +110,10 @@ def test_canvas_size_limit() -> None:
     with pytest.raises(ValidationError) as exc:
         Canvas(page=get_valid_page(), elements=[big])
     assert "larger than 256 KB" in str(exc.value)
+
+def test_font_family_must_be_curated() -> None:
+    families: list[FontFamily] = ["Inter", "Open Sans", "Merriweather", "Roboto Mono"]
+    for family in families:
+        TextProps(content="Hi", fontFamily=family, fontSize=12, color="#000000")
+    with pytest.raises(ValidationError):
+        TextProps(content="Hi", fontFamily="Comic Sans MS", fontSize=12, color="#000000")  # type: ignore[arg-type]

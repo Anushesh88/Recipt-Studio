@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MAX_CANVAS_BYTES, MAX_ELEMENTS, MIN_ELEMENT_SIZE } from "../lib/units";
+import { FONT_FAMILIES, MAX_CANVAS_BYTES, MAX_ELEMENTS, MIN_ELEMENT_SIZE } from "../lib/units";
 
 const VARIABLE_REGEX = /\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}/g;
 const BUILTIN_VARIABLES = new Set([
@@ -18,6 +18,9 @@ const validateVariables = (text: string) => {
   return true;
 };
 
+// Only the curated, bundled fonts (FONT_FAMILIES)
+const fontFamily = z.enum(FONT_FAMILIES);
+
 const hexColor = z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Must be a valid hex color");
 
 const baseElement = z.object({
@@ -32,7 +35,7 @@ const baseElement = z.object({
 
 const textProps = z.object({
   content: z.string().refine(validateVariables, "Unknown variables in content"),
-  fontFamily: z.string(),
+  fontFamily,
   fontSize: z.number().min(6).max(96),
   fontWeight: z.number().default(400),
   color: hexColor,
@@ -66,7 +69,7 @@ const columnDef = z.object({
 const itemsTableProps = z.object({
   binding: z.literal("receipt.items"),
   columns: z.array(columnDef),
-  fontFamily: z.string(),
+  fontFamily,
   fontSize: z.number().min(6).max(96),
   lineHeight: z.number().default(1.3),
   rowPadding: z.number().default(4),
@@ -83,7 +86,7 @@ export const itemsTableElementSchema = baseElement.extend({
 const totalsProps = z.object({
   binding: z.literal("receipt.totals"),
   show: z.array(z.enum(["subtotal", "tax", "discount", "total"])),
-  fontFamily: z.string(),
+  fontFamily,
   fontSize: z.number().min(6).max(96),
   emphasizeTotal: z.boolean().default(true),
   currencySymbol: z.string().default("$"),

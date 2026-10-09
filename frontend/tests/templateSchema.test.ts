@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { canvasSchema } from "../src/schema/templateSchema";
+import { FONT_FAMILIES } from "../src/lib/units";
 
 describe("Canvas Schema", () => {
   const validPage = { preset: "thermal80" as const, width: 302, height: 640, heightMode: "auto" as const, background: "#FFFFFF", margin: 12 };
@@ -102,6 +103,16 @@ describe("Canvas Schema", () => {
     const fixedPage = { preset: "a5" as const, width: 559, height: 794, heightMode: "fixed" as const, background: "#FFFFFF", margin: 24 };
     expect(messages({ schemaVersion: 1, page: fixedPage, elements: [{ ...validText, y: 780 }] }))
       .toContain("Element el_1 extends past the page height");
+  });
+
+  it("should accept only the curated fonts", () => {
+    for (const family of FONT_FAMILIES) {
+      expect(messages({ schemaVersion: 1, page: validPage, elements: [{ ...validText, props: { ...validText.props, fontFamily: family } }] })).toEqual([]);
+    }
+    expect(canvasSchema.safeParse({
+      schemaVersion: 1, page: validPage,
+      elements: [{ ...validText, props: { ...validText.props, fontFamily: "Comic Sans MS" } }],
+    }).success).toBe(false);
   });
 
   it("should reject templates over 256 KB", () => {

@@ -1,6 +1,7 @@
 import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
+import { fontStack } from "../../lib/units";
 
 export const TotalsEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "totals" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   const { props } = element;
@@ -23,7 +24,7 @@ export const TotalsEl = React.forwardRef<HTMLDivElement, { element: Extract<Canv
     <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
       <div
         style={{
-          fontFamily: props.fontFamily,
+          fontFamily: fontStack(props.fontFamily),
           fontSize: `${props.fontSize}px`,
           width: "100%",
           display: "flex",

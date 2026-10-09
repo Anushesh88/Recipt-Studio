@@ -8,6 +8,13 @@ VARIABLE_REGEX = re.compile(r"\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}")
 
 MAX_CANVAS_BYTES = 256 * 1024  # serialized template size limit (docs/03-schema.md)
 
+# The curated 8 fonts (docs/03-schema.md); mirrors FONT_FAMILIES in
+# frontend/src/lib/units.ts. Phase 5 bundles the same files in app/fonts.
+FontFamily = Literal[
+    "Inter", "Roboto", "Open Sans", "Montserrat",
+    "Lato", "Poppins", "Merriweather", "Roboto Mono",
+]
+
 BUILTIN_VARIABLES = {
     "business.name", "customer.name", "customer.email", "receipt.number",
     "receipt.date", "receipt.payment_method", "receipt.currency", "receipt.notes"
@@ -30,7 +37,7 @@ class BaseElement(BaseModel):
 
 class TextProps(BaseModel):
     content: str
-    fontFamily: str
+    fontFamily: FontFamily
     fontSize: float = Field(ge=6, le=96)
     fontWeight: int = 400
     color: str = Field(pattern=r"^#[0-9A-Fa-f]{6}$")
@@ -64,7 +71,7 @@ class ColumnDef(BaseModel):
 class ItemsTableProps(BaseModel):
     binding: Literal["receipt.items"]
     columns: list[ColumnDef]
-    fontFamily: str
+    fontFamily: FontFamily
     fontSize: float = Field(ge=6, le=96)
     lineHeight: float = 1.3
     rowPadding: float = 4
@@ -79,7 +86,7 @@ class ItemsTableElement(BaseElement):
 class TotalsProps(BaseModel):
     binding: Literal["receipt.totals"]
     show: list[Literal["subtotal", "tax", "discount", "total"]]
-    fontFamily: str
+    fontFamily: FontFamily
     fontSize: float = Field(ge=6, le=96)
     emphasizeTotal: bool = True
     currencySymbol: str = "$"
