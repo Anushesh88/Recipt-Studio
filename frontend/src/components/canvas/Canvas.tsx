@@ -2,11 +2,15 @@ import React, { useRef, useEffect, useCallback } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "../../store/editorStore";
 import { CanvasElementNode } from "./CanvasElementNode";
-import { ZOOM_MIN, ZOOM_MAX, ZOOM_SENSITIVITY } from "../../lib/units";
+import {
+  ZOOM_MIN,
+  ZOOM_MAX,
+  ZOOM_SENSITIVITY,
+  ZOOM_EPSILON,
+  WORKSPACE_SIZE,
+  WORKSPACE_PAGE_ORIGIN,
+} from "../../lib/units";
 import { zoomAtPoint } from "../../lib/zoomUtils";
-
-const WORKSPACE_SIZE = 4000;
-const CONTENT_ORIGIN = 1800;
 
 export const Canvas: React.FC = () => {
   const page = useEditorStore((state) => state.page);
@@ -84,7 +88,7 @@ export const Canvas: React.FC = () => {
           const nextZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, rawNewZoom));
           pendingDeltaY = 0;
 
-          if (Math.abs(nextZoom - currentZoom) > 0.0001) {
+          if (Math.abs(nextZoom - currentZoom) > ZOOM_EPSILON) {
             const containerRect = container.getBoundingClientRect();
             const content = contentWrapperRef.current;
             if (content) {
@@ -191,8 +195,8 @@ export const Canvas: React.FC = () => {
           ref={contentWrapperRef}
           style={{
             position: "absolute",
-            left: `${CONTENT_ORIGIN}px`,
-            top: `${CONTENT_ORIGIN}px`,
+            left: `${WORKSPACE_PAGE_ORIGIN}px`,
+            top: `${WORKSPACE_PAGE_ORIGIN}px`,
             transform: `scale(${zoom})`,
             transformOrigin: "top left",
           }}

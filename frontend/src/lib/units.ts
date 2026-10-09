@@ -1,15 +1,30 @@
 import type { CanvasElement, pageConfigSchema } from "../schema/templateSchema";
 import { z } from "zod";
+import { tableHeight } from "./layout";
 
 export const GRID_SIZE = 4;
 export const MAX_ELEMENTS = 100;
 export const MAX_HISTORY = 50;
 // Matches the schema's width/height >= 8 rule
 export const MIN_ELEMENT_SIZE = 8;
+// Serialized template size limit (docs/03-schema.md)
+export const MAX_CANVAS_BYTES = 256 * 1024;
 
 export const ZOOM_MIN = 0.25;
 export const ZOOM_MAX = 3;
 export const ZOOM_SENSITIVITY = 0.0015;
+// Ignore zoom changes smaller than this (avoids re-rendering on float noise)
+export const ZOOM_EPSILON = 0.0001;
+
+// Scrollable gray workspace around the page, so zoom can center on any point
+export const WORKSPACE_SIZE = 4000;
+export const WORKSPACE_PAGE_ORIGIN = 1800;
+
+export const TOAST_DURATION_MS = 3000;
+
+// The editor shows the items table with this many placeholder rows; its default
+// height is exactly header + these rows, per the Layout Algorithm.
+export const ITEMS_TABLE_SAMPLE_ROWS = 3;
 
 export type PagePreset = z.infer<typeof pageConfigSchema>["preset"];
 
@@ -42,6 +57,23 @@ export const PAGE_PRESETS: Record<PagePreset, z.infer<typeof pageConfigSchema>> 
 
 export const DEFAULT_PAGE = PAGE_PRESETS.thermal80;
 
+const DEFAULT_TABLE_PROPS: Extract<CanvasElement, { type: "items_table" }>["props"] = {
+  binding: "receipt.items",
+  columns: [
+    { key: "description", label: "Item", width: 0.45, align: "left" },
+    { key: "qty", label: "Qty", width: 0.15, align: "right" },
+    { key: "unit_price", label: "Price", width: 0.2, align: "right" },
+    { key: "line_total", label: "Total", width: 0.2, align: "right" },
+  ],
+  fontFamily: "Inter",
+  fontSize: 12,
+  lineHeight: 1.3,
+  rowPadding: 4,
+  headerBold: true,
+  rowDivider: true,
+  color: "#000000",
+};
+
 // Default sizes and props when dropping
 export const DEFAULT_ELEMENTS: Record<CanvasElement["type"], Omit<CanvasElement, "id" | "x" | "y" | "zIndex" | "type">> = {
   text: {
@@ -70,24 +102,9 @@ export const DEFAULT_ELEMENTS: Record<CanvasElement["type"], Omit<CanvasElement,
   },
   items_table: {
     width: 278,
-    height: 100, // header + 3 rows
+    height: tableHeight(DEFAULT_TABLE_PROPS, ITEMS_TABLE_SAMPLE_ROWS), // 4 rows x 24px = 96
     locked: false,
-    props: {
-      binding: "receipt.items",
-      columns: [
-        { key: "description", label: "Item", width: 0.45, align: "left" },
-        { key: "qty", label: "Qty", width: 0.15, align: "right" },
-        { key: "unit_price", label: "Price", width: 0.2, align: "right" },
-        { key: "line_total", label: "Total", width: 0.2, align: "right" },
-      ],
-      fontFamily: "Inter",
-      fontSize: 12,
-      lineHeight: 1.3,
-      rowPadding: 4,
-      headerBold: true,
-      rowDivider: true,
-      color: "#000000",
-    },
+    props: DEFAULT_TABLE_PROPS,
   },
   totals: {
     width: 180,

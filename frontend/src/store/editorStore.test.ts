@@ -66,8 +66,40 @@ describe("editorStore", () => {
     useEditorStore.getState().moveElement("test-text", 1000, -100);
     
     const elements = useEditorStore.getState().elements;
-    expect(elements[0].x).toBeLessThanOrEqual(204); // 302 - 100 = 202; closest multiple of 4 is 200 or 204.
+    // 302 - 100 = 202 -> floored to the grid: 200 (snapping up to 204 would overshoot)
+    expect(elements[0].x).toBe(200);
     expect(elements[0].y).toBe(0); // clamped to 0
+  });
+
+  it("never lets a snapped position overshoot the right edge", () => {
+    const el = { ...getDummyText(), width: 200 };
+    useEditorStore.getState().addElement(el);
+    // 102 is where a live drag clamps to (302 - 200); it used to snap up to 104
+    useEditorStore.getState().updateElementGeometry(el.id, { x: 102 });
+    const { x, width } = useEditorStore.getState().elements[0];
+    expect(x).toBe(100);
+    expect(x + width).toBeLessThanOrEqual(302);
+  });
+
+  it("a resize keeps the position and caps the size at the page edge", () => {
+    const el = { ...getDummyText(), x: 100, width: 100 };
+    useEditorStore.getState().addElement(el);
+    useEditorStore.getState().resizeElement(el.id, 250, 40);
+    const resized = useEditorStore.getState().elements[0];
+    expect(resized.x).toBe(100);
+    expect(resized.width).toBe(200); // 302 - 100 = 202 -> floored to 200
+    expect(resized.height).toBe(40);
+  });
+
+  it("keeps zIndex in step with array order after deletes and adds", () => {
+    const store = useEditorStore.getState();
+    for (const id of ["a", "b", "c"]) store.addElement({ ...getDummyText(), id });
+    store.deleteElement("a");
+    store.deleteElement("b");
+    store.addElement({ ...getDummyText(), id: "d", zIndex: 99 });
+    // previously "d" got zIndex = length + 1 = 2 while "c" kept 3, so the newest
+    // element painted underneath an older one
+    expect(useEditorStore.getState().elements.map((e) => [e.id, e.zIndex])).toEqual([["c", 1], ["d", 2]]);
   });
 
   it("can resize an element", () => {

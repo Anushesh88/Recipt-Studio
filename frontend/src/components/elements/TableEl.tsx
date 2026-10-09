@@ -1,16 +1,41 @@
 import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
+import { ITEMS_TABLE_SAMPLE_ROWS } from "../../lib/units";
+import { tableRowHeight } from "../../lib/layout";
+
+const DIVIDER_PX = 1;
+
+// Placeholder line items shown in the editor (real items come from the Generate form).
+// They sum to the TotalsEl placeholder subtotal of 35.00.
+const SAMPLE_ITEMS: Record<string, string>[] = [
+  { description: "Item 1", qty: "1", unit_price: "10.00", line_total: "10.00" },
+  { description: "Item 2", qty: "2", unit_price: "5.00", line_total: "10.00" },
+  { description: "Item 3", qty: "1", unit_price: "15.00", line_total: "15.00" },
+];
+const SAMPLE_ROWS = Array.from({ length: ITEMS_TABLE_SAMPLE_ROWS }, (_, i) => SAMPLE_ITEMS[i % SAMPLE_ITEMS.length]);
 
 export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "items_table" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   const { props } = element;
-  
-  // Create 3 dummy rows for preview
-  const dummyRows = [
-    { description: "Item 1", qty: "1", unit_price: "10.00", line_total: "10.00" },
-    { description: "Item 2", qty: "2", unit_price: "5.00", line_total: "10.00" },
-    { description: "Item 3", qty: "1", unit_price: "15.00", line_total: "15.00" },
-  ];
+  const lineBox = Math.ceil(props.fontSize * props.lineHeight);
+  const rowHeight = tableRowHeight(props);
+
+  // Every row is exactly rowHeight (the Layout Algorithm's row_h), so the default
+  // height of header + sample rows fills the element box. The 1px divider comes out
+  // of the bottom padding, and borders are "separate" so they don't collapse into
+  // neighbouring rows.
+  const cellStyle = (align: React.CSSProperties["textAlign"], divider: string | null): React.CSSProperties => ({
+    textAlign: align,
+    lineHeight: `${lineBox}px`,
+    padding: `${props.rowPadding}px 0 ${Math.max(0, props.rowPadding - (divider ? DIVIDER_PX : 0))}px`,
+    borderBottom: divider ?? "none",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  });
+
+  const headerDivider = props.rowDivider ? `${DIVIDER_PX}px solid ${props.color}` : null;
+  const rowDivider = props.rowDivider ? `${DIVIDER_PX}px dashed ${props.color}40` : null;
 
   return (
     <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
@@ -20,22 +45,20 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
           width: "100%",
           fontFamily: props.fontFamily,
           fontSize: `${props.fontSize}px`,
-          lineHeight: props.lineHeight,
           color: props.color,
-          borderCollapse: "collapse",
+          borderCollapse: "separate",
+          borderSpacing: 0,
         }}
       >
         <thead>
-          <tr>
+          <tr style={{ height: `${rowHeight}px` }}>
             {props.columns.map((col, i) => (
               <th
                 key={i}
                 style={{
+                  ...cellStyle(col.align, headerDivider),
                   width: `${col.width * 100}%`,
-                  textAlign: col.align,
                   fontWeight: props.headerBold ? "bold" : "normal",
-                  paddingBottom: `${props.rowPadding}px`,
-                  borderBottom: props.rowDivider ? `1px solid ${props.color}` : "none",
                 }}
               >
                 {col.label}
@@ -44,22 +67,11 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
           </tr>
         </thead>
         <tbody>
-          {dummyRows.map((row, rIdx) => (
-            <tr key={rIdx}>
+          {SAMPLE_ROWS.map((row, rIdx) => (
+            <tr key={rIdx} style={{ height: `${rowHeight}px` }}>
               {props.columns.map((col, cIdx) => (
-                <td
-                  key={cIdx}
-                  style={{
-                    textAlign: col.align,
-                    paddingTop: `${props.rowPadding}px`,
-                    paddingBottom: `${props.rowPadding}px`,
-                    borderBottom: props.rowDivider && rIdx < dummyRows.length - 1 ? `1px dashed ${props.color}40` : "none",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {(row as Record<string, string>)[col.key] || "-"}
+                <td key={cIdx} style={cellStyle(col.align, rIdx < SAMPLE_ROWS.length - 1 ? rowDivider : null)}>
+                  {row[col.key] || "-"}
                 </td>
               ))}
             </tr>

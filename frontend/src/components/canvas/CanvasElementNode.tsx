@@ -2,7 +2,8 @@ import React, { useState, useRef, useLayoutEffect } from "react";
 import Moveable from "react-moveable";
 import { useEditorStore } from "../../store/editorStore";
 import { TextEl, ImageEl, TableEl, TotalsEl, QrEl, SignatureEl, DividerEl } from "../elements";
-import { MIN_ELEMENT_SIZE } from "../../lib/units";
+import { GRID_SIZE, MIN_ELEMENT_SIZE } from "../../lib/units";
+import { floorToGrid, maxGridPosition, snapToGrid } from "../../lib/canvasUtils";
 
 const ALL_DIRECTIONS = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
 // A divider is only a few px tall, so n/s/corner handles would cover its whole
@@ -80,23 +81,21 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
           snappable={true}
           bounds={{ left: 0, top: 0, right: page.width, bottom: page.height }}
           zoom={zoom}
-          throttleDrag={4}
-          throttleResize={4}
+          throttleDrag={GRID_SIZE}
+          throttleResize={GRID_SIZE}
           keepRatio={false}
           origin={false}
           renderDirections={element.type === "divider" ? DIVIDER_DIRECTIONS : ALL_DIRECTIONS}
           onDrag={(e) => {
             const [rawDx, rawDy] = e.beforeTranslate;
-            const candidateX = element.x + rawDx;
-            const candidateY = element.y + rawDy;
+            const snappedX = snapToGrid(element.x + rawDx, GRID_SIZE);
+            const snappedY = snapToGrid(element.y + rawDy, GRID_SIZE);
 
-            const snappedX = Math.round(candidateX / 4) * 4;
-            const snappedY = Math.round(candidateY / 4) * 4;
-
-            const maxX = page.width - element.width;
+            // Same grid-floored bounds as the store, so nothing jumps on release
+            const maxX = maxGridPosition(page.width, element.width, GRID_SIZE);
             const clampedX = Math.max(0, Math.min(snappedX, maxX));
 
-            const maxY = page.height - element.height;
+            const maxY = maxGridPosition(page.height, element.height, GRID_SIZE);
             const clampedY = Math.max(0, Math.min(snappedY, maxY));
 
             const actualDx = clampedX - element.x;
@@ -131,30 +130,26 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
               rawDy = parseFloat(match[2]);
             }
 
-            let candidateX = element.x + rawDx;
-            let candidateY = element.y + rawDy;
-            let candidateW = Math.max(8, e.width);
-            let candidateH = Math.max(8, e.height);
+            let snappedX = snapToGrid(element.x + rawDx, GRID_SIZE);
+            let snappedY = snapToGrid(element.y + rawDy, GRID_SIZE);
+            let snappedW = snapToGrid(Math.max(MIN_ELEMENT_SIZE, e.width), GRID_SIZE);
+            let snappedH = snapToGrid(Math.max(MIN_ELEMENT_SIZE, e.height), GRID_SIZE);
 
-            let snappedX = Math.round(candidateX / 4) * 4;
-            let snappedY = Math.round(candidateY / 4) * 4;
-            let snappedW = Math.round(candidateW / 4) * 4;
-            let snappedH = Math.round(candidateH / 4) * 4;
-
+            // Caps are floored to the grid (like the store) so the size never runs past the page edge
             if (snappedX < 0) {
-              snappedW = Math.max(8, snappedW + snappedX);
+              snappedW = Math.max(MIN_ELEMENT_SIZE, snappedW + snappedX);
               snappedX = 0;
             }
             if (snappedX + snappedW > page.width) {
-              snappedW = Math.max(8, page.width - snappedX);
+              snappedW = Math.max(MIN_ELEMENT_SIZE, floorToGrid(page.width - snappedX, GRID_SIZE));
             }
 
             if (snappedY < 0) {
-              snappedH = Math.max(8, snappedH + snappedY);
+              snappedH = Math.max(MIN_ELEMENT_SIZE, snappedH + snappedY);
               snappedY = 0;
             }
             if (snappedY + snappedH > page.height) {
-              snappedH = Math.max(8, page.height - snappedY);
+              snappedH = Math.max(MIN_ELEMENT_SIZE, floorToGrid(page.height - snappedY, GRID_SIZE));
             }
 
             const actualDx = snappedX - element.x;

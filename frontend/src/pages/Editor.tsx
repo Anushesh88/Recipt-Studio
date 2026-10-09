@@ -14,7 +14,7 @@ import {
 import { Palette, PaletteDragPreview } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
 import { useEditorStore } from "../store/editorStore";
-import { DEFAULT_ELEMENTS, GRID_SIZE } from "../lib/units";
+import { DEFAULT_ELEMENTS, GRID_SIZE, TOAST_DURATION_MS } from "../lib/units";
 import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
 import type { CanvasElement } from "../schema/templateSchema";
@@ -92,12 +92,12 @@ export const Editor: React.FC = () => {
 
     if (type === "items_table" && elements.some((el) => el.type === "items_table")) {
       setToast("Only one items table is allowed.");
-      setTimeout(() => setToast(null), 3000);
+      setTimeout(() => setToast(null), TOAST_DURATION_MS);
       return;
     }
     if (type === "totals" && elements.some((el) => el.type === "totals")) {
       setToast("Only one totals element is allowed.");
-      setTimeout(() => setToast(null), 3000);
+      setTimeout(() => setToast(null), TOAST_DURATION_MS);
       return;
     }
 

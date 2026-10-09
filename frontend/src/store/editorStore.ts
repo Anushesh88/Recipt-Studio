@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type { CanvasElement, Canvas } from "../schema/templateSchema";
-import { DEFAULT_PAGE, GRID_SIZE, MAX_HISTORY } from "../lib/units";
+import { DEFAULT_PAGE, GRID_SIZE, MAX_HISTORY, MIN_ELEMENT_SIZE } from "../lib/units";
+import { floorToGrid, maxGridPosition, snapToGrid } from "../lib/canvasUtils";
 
 interface EditorSnapshot {
   page: Canvas["page"];
@@ -34,7 +35,48 @@ interface EditorState {
   redo: () => void;
 }
 
-const snapToGrid = (val: number) => Math.round(val / GRID_SIZE) * GRID_SIZE;
+interface Geometry {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Snaps only the values being changed, then keeps the box inside the page.
+// - Untouched values are kept as-is, so an off-grid size like the 278px table
+//   isn't silently resized by a move.
+// - Position bounds are floored to the grid, so a snapped position can never land
+//   past an edge (page sizes like 302px aren't grid multiples).
+// - The bottom edge only applies to fixed-height pages; auto pages grow.
+const fitGeometry = (page: Canvas["page"], current: Geometry, change: Partial<Geometry>): Geometry => {
+  const snapSize = (v: number) => Math.max(MIN_ELEMENT_SIZE, snapToGrid(v, GRID_SIZE));
+  const fixedHeight = page.heightMode === "fixed";
+
+  const width = Math.min(change.width !== undefined ? snapSize(change.width) : current.width, page.width);
+  let height = change.height !== undefined ? snapSize(change.height) : current.height;
+  if (fixedHeight) height = Math.min(height, page.height);
+
+  let x = Math.max(0, change.x !== undefined ? snapToGrid(change.x, GRID_SIZE) : current.x);
+  let y = Math.max(0, change.y !== undefined ? snapToGrid(change.y, GRID_SIZE) : current.y);
+  x = Math.min(x, maxGridPosition(page.width, width, GRID_SIZE));
+  if (fixedHeight) y = Math.min(y, maxGridPosition(page.height, height, GRID_SIZE));
+
+  return { x, y, width, height };
+};
+
+const applyGeometry = (el: CanvasElement, geometry: Geometry) => {
+  el.x = geometry.x;
+  el.y = geometry.y;
+  el.width = geometry.width;
+  el.height = geometry.height;
+};
+
+// zIndex is informational; keep it mirroring the array (paint) order
+const renumberZIndex = (elements: CanvasElement[]) => {
+  elements.forEach((e, i) => {
+    e.zIndex = i + 1;
+  });
+};
 
 export const useEditorStore = create<EditorState>()(
   immer((set) => {
@@ -62,6 +104,7 @@ export const useEditorStore = create<EditorState>()(
         set((draft) => {
           saveSnapshot(draft);
           draft.elements.push(el);
+          renumberZIndex(draft.elements);
           draft.selectedId = el.id;
         }),
 
@@ -79,21 +122,7 @@ export const useEditorStore = create<EditorState>()(
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
             saveSnapshot(draft);
-            
-            // Clamp within bounds
-            const page = draft.page;
-            const rightBound = page.width - el.width;
-            let clampedX = Math.max(0, Math.min(x, rightBound));
-            
-            // For fixed height, clamp y as well
-            let clampedY = Math.max(0, y);
-            if (page.heightMode === "fixed") {
-              const bottomBound = page.height - el.height;
-              clampedY = Math.min(clampedY, bottomBound);
-            }
-
-            el.x = snapToGrid(clampedX);
-            el.y = snapToGrid(clampedY);
+            applyGeometry(el, fitGeometry(draft.page, el, { x, y }));
           }
         }),
 
@@ -102,22 +131,14 @@ export const useEditorStore = create<EditorState>()(
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
             saveSnapshot(draft);
-            
-            // Minimum size constraint
-            let newWidth = Math.max(8, width);
-            let newHeight = Math.max(8, height);
-            
-            // Clamp within bounds
+            // A resize keeps the position and caps the size at the page edge
             const page = draft.page;
-            if (el.x + newWidth > page.width) {
-              newWidth = page.width - el.x;
-            }
-            if (page.heightMode === "fixed" && el.y + newHeight > page.height) {
-              newHeight = page.height - el.y;
-            }
-
-            el.width = snapToGrid(newWidth);
-            el.height = snapToGrid(newHeight);
+            const maxWidth = floorToGrid(page.width - el.x, GRID_SIZE);
+            const maxHeight = page.heightMode === "fixed" ? floorToGrid(page.height - el.y, GRID_SIZE) : Infinity;
+            applyGeometry(el, fitGeometry(page, el, {
+              width: Math.min(width, maxWidth),
+              height: Math.min(height, maxHeight),
+            }));
           }
         }),
 
@@ -126,39 +147,7 @@ export const useEditorStore = create<EditorState>()(
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
             saveSnapshot(draft);
-            
-            let newWidth = geometry.width !== undefined ? Math.max(8, geometry.width) : el.width;
-            let newHeight = geometry.height !== undefined ? Math.max(8, geometry.height) : el.height;
-            let newX = geometry.x !== undefined ? geometry.x : el.x;
-            let newY = geometry.y !== undefined ? geometry.y : el.y;
-
-            const page = draft.page;
-            
-            // clamp width and x
-            const rightBound = page.width - newWidth;
-            newX = Math.max(0, Math.min(newX, rightBound));
-            
-            if (newX + newWidth > page.width) {
-              newWidth = page.width - newX;
-            }
-
-            // clamp height and y (if fixed)
-            if (page.heightMode === "fixed") {
-              const bottomBound = page.height - newHeight;
-              newY = Math.max(0, Math.min(newY, bottomBound));
-              if (newY + newHeight > page.height) {
-                newHeight = page.height - newY;
-              }
-            } else {
-              newY = Math.max(0, newY);
-            }
-
-            el.x = snapToGrid(newX);
-            el.y = snapToGrid(newY);
-            // Only snap sizes that are being changed: re-snapping an untouched off-grid
-            // size (e.g. the 278px table/divider) silently resized elements on a move.
-            el.width = geometry.width !== undefined ? snapToGrid(newWidth) : newWidth;
-            el.height = geometry.height !== undefined ? snapToGrid(newHeight) : newHeight;
+            applyGeometry(el, fitGeometry(draft.page, el, geometry));
           }
         }),
 
@@ -166,6 +155,7 @@ export const useEditorStore = create<EditorState>()(
         set((draft) => {
           saveSnapshot(draft);
           draft.elements = draft.elements.filter((e) => e.id !== id);
+          renumberZIndex(draft.elements);
           if (draft.selectedId === id) {
             draft.selectedId = null;
           }
@@ -192,10 +182,7 @@ export const useEditorStore = create<EditorState>()(
             elements.unshift(el);
           }
           
-          // Reassign zIndex informatively based on array order
-          elements.forEach((e, i) => {
-            e.zIndex = i + 1;
-          });
+          renumberZIndex(elements);
         }),
 
       loadTemplate: (canvas) =>

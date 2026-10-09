@@ -10,13 +10,24 @@ export function computeDropCoords(
   const unscaledX = (pointerX - canvasLeft) / zoom;
   const unscaledY = (pointerY - canvasTop) / zoom;
   return {
-    x: Math.max(0, Math.round(unscaledX / gridSize) * gridSize),
-    y: Math.max(0, Math.round(unscaledY / gridSize) * gridSize),
+    x: Math.max(0, snapToGrid(unscaledX, gridSize)),
+    y: Math.max(0, snapToGrid(unscaledY, gridSize)),
   };
 }
 
-// Keeps a box fully inside the page. Max bounds are floored to the grid so a
-// snapped position never overshoots the page edge.
+export function snapToGrid(value: number, gridSize: number): number {
+  return Math.round(value / gridSize) * gridSize;
+}
+
+export const floorToGrid = (value: number, gridSize: number) => Math.floor(value / gridSize) * gridSize;
+
+// Largest on-grid position at which a box of `size` still fits within `extent`.
+// Flooring (rather than snapping) matters because page sizes like 302px aren't
+// multiples of the grid: snapping 302 - 200 = 102 up to 104 would overshoot.
+export const maxGridPosition = (extent: number, size: number, gridSize: number) =>
+  Math.max(0, floorToGrid(extent - size, gridSize));
+
+// Keeps an already-snapped box fully inside the page, staying on the grid
 export function clampToPage(
   x: number,
   y: number,
@@ -25,11 +36,9 @@ export function clampToPage(
   page: { width: number; height: number },
   gridSize: number
 ): { x: number; y: number } {
-  const maxX = Math.max(0, Math.floor((page.width - width) / gridSize) * gridSize);
-  const maxY = Math.max(0, Math.floor((page.height - height) / gridSize) * gridSize);
   return {
-    x: Math.min(Math.max(0, x), maxX),
-    y: Math.min(Math.max(0, y), maxY),
+    x: Math.min(Math.max(0, x), maxGridPosition(page.width, width, gridSize)),
+    y: Math.min(Math.max(0, y), maxGridPosition(page.height, height, gridSize)),
   };
 }
 
