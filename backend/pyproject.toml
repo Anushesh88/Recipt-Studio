@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.30.1",
     "sqlalchemy>=2.0.30",
     "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0",  # driver for the default local-dev DATABASE_URL (sqlite+aiosqlite)
     "alembic>=1.13.1",
     "python-jose[cryptography]>=3.3.0",
     "passlib[bcrypt]>=1.7.4",
@@ -45,5 +46,6 @@ line-length = 88
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Security", "Depends", "Security"]
 
-[tool.setuptools]
-packages = ["app"]
+[tool.setuptools.packages.find]
+# app is a package tree (app.core, app.api, ...); find them all, not just "app"
+include = ["app*"]

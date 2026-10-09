@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Integer, Text, func
+from sqlalchemy import CheckConstraint, DateTime, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,9 +15,14 @@ class User(Base):
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     business_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    receipt_prefix: Mapped[str] = mapped_column(Text, nullable=False, default="R-")
-    numbering_mode: Mapped[str] = mapped_column(Text, nullable=False, default="sequential")
-    receipt_next_seq: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # server_default mirrors docs/03-schema.md so rows inserted outside the ORM get them too
+    receipt_prefix: Mapped[str] = mapped_column(Text, nullable=False, default="R-", server_default="R-")
+    numbering_mode: Mapped[str] = mapped_column(
+        Text, nullable=False, default="sequential", server_default="sequential"
+    )
+    receipt_next_seq: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     __table_args__ = (

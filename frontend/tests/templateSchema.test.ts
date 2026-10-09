@@ -79,4 +79,34 @@ describe("Canvas Schema", () => {
     });
     expect(resultFontSize.success).toBe(false);
   });
+
+  const messages = (input: unknown) => {
+    const result = canvasSchema.safeParse(input);
+    return result.success ? [] : result.error.issues.map((i) => i.message);
+  };
+
+  it("should reject duplicate element ids", () => {
+    expect(messages({ schemaVersion: 1, page: validPage, elements: [validText, { ...validText }] }))
+      .toContain("Duplicate element id: el_1");
+  });
+
+  it("should reject elements past the page width", () => {
+    expect(messages({ schemaVersion: 1, page: validPage, elements: [{ ...validText, x: 250 }] }))
+      .toContain("Element el_1 extends past the page width");
+  });
+
+  it("should bound the height only on fixed-height pages", () => {
+    const low = { ...validText, y: 700 }; // below the 640px design height
+    expect(messages({ schemaVersion: 1, page: validPage, elements: [low] })).toEqual([]);
+
+    const fixedPage = { preset: "a5" as const, width: 559, height: 794, heightMode: "fixed" as const, background: "#FFFFFF", margin: 24 };
+    expect(messages({ schemaVersion: 1, page: fixedPage, elements: [{ ...validText, y: 780 }] }))
+      .toContain("Element el_1 extends past the page height");
+  });
+
+  it("should reject templates over 256 KB", () => {
+    const big = { ...validText, props: { ...validText.props, content: "x".repeat(256 * 1024 + 1) } };
+    expect(messages({ schemaVersion: 1, page: validPage, elements: [big] }))
+      .toContain("Template is larger than 256 KB");
+  });
 });

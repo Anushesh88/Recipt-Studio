@@ -1,9 +1,12 @@
 import re
+from collections import Counter
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
 VARIABLE_REGEX = re.compile(r"\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}")
+
+MAX_CANVAS_BYTES = 256 * 1024  # serialized template size limit (docs/03-schema.md)
 
 BUILTIN_VARIABLES = {
     "business.name", "customer.name", "customer.email", "receipt.number",
@@ -142,4 +145,20 @@ class Canvas(BaseModel):
             raise ValueError("Max one items_table element is allowed.")
         if totals_count > 1:
             raise ValueError("Max one totals element is allowed.")
+
+        id_counts = Counter(e.id for e in self.elements)
+        duplicates = sorted(i for i, n in id_counts.items() if n > 1)
+        if duplicates:
+            raise ValueError(f"Duplicate element ids: {', '.join(duplicates)}")
+
+        # Elements must fit the page width; fixed-height pages also bound the height
+        # (auto-height pages grow at generation time).
+        for e in self.elements:
+            if e.x + e.width > self.page.width:
+                raise ValueError(f"Element {e.id} extends past the page width.")
+            if self.page.heightMode == "fixed" and e.y + e.height > self.page.height:
+                raise ValueError(f"Element {e.id} extends past the page height.")
+
+        if len(self.model_dump_json().encode()) > MAX_CANVAS_BYTES:
+            raise ValueError(f"Template is larger than {MAX_CANVAS_BYTES // 1024} KB.")
         return self

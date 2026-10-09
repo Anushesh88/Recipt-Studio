@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_CANVAS_BYTES, MAX_ELEMENTS, MIN_ELEMENT_SIZE } from "../lib/units";
 
 const VARIABLE_REGEX = /\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}/g;
 const BUILTIN_VARIABLES = new Set([
@@ -23,8 +24,8 @@ const baseElement = z.object({
   id: z.string(),
   x: z.number().min(0),
   y: z.number().min(0),
-  width: z.number().min(8),
-  height: z.number().min(8),
+  width: z.number().min(MIN_ELEMENT_SIZE),
+  height: z.number().min(MIN_ELEMENT_SIZE),
   zIndex: z.number().default(1),
   locked: z.boolean().default(false),
 });
@@ -144,20 +145,41 @@ export const pageConfigSchema = z.object({
   margin: z.number().min(0),
 });
 
+// Mirrors Canvas.validate_canvas in backend/app/schemas/canvas.py
 export const canvasSchema = z.object({
   schemaVersion: z.literal(1).default(1),
   page: pageConfigSchema,
-  elements: z.array(canvasElementSchema).max(100),
-}).refine(data => {
-  const itemsTableCount = data.elements.filter(e => e.type === "items_table").length;
-  if (itemsTableCount > 1) return false;
-  return true;
-}, "Max one items_table element is allowed")
-  .refine(data => {
-  const totalsCount = data.elements.filter(e => e.type === "totals").length;
-  if (totalsCount > 1) return false;
-  return true;
-}, "Max one totals element is allowed");
+  elements: z.array(canvasElementSchema).max(MAX_ELEMENTS),
+}).superRefine((data, ctx) => {
+  const count = (type: string) => data.elements.filter((e) => e.type === type).length;
+  if (count("items_table") > 1) {
+    ctx.addIssue({ code: "custom", message: "Max one items_table element is allowed", path: ["elements"] });
+  }
+  if (count("totals") > 1) {
+    ctx.addIssue({ code: "custom", message: "Max one totals element is allowed", path: ["elements"] });
+  }
+
+  const seen = new Set<string>();
+  data.elements.forEach((e, i) => {
+    if (seen.has(e.id)) {
+      ctx.addIssue({ code: "custom", message: `Duplicate element id: ${e.id}`, path: ["elements", i, "id"] });
+    }
+    seen.add(e.id);
+
+    // Elements must fit the page width; fixed-height pages also bound the height
+    // (auto-height pages grow at generation time).
+    if (e.x + e.width > data.page.width) {
+      ctx.addIssue({ code: "custom", message: `Element ${e.id} extends past the page width`, path: ["elements", i] });
+    }
+    if (data.page.heightMode === "fixed" && e.y + e.height > data.page.height) {
+      ctx.addIssue({ code: "custom", message: `Element ${e.id} extends past the page height`, path: ["elements", i] });
+    }
+  });
+
+  if (new TextEncoder().encode(JSON.stringify(data)).length > MAX_CANVAS_BYTES) {
+    ctx.addIssue({ code: "custom", message: `Template is larger than ${MAX_CANVAS_BYTES / 1024} KB`, path: [] });
+  }
+});
 
 export type CanvasElement = z.infer<typeof canvasElementSchema>;
 export type Canvas = z.infer<typeof canvasSchema>;
