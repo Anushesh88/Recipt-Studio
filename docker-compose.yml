@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: receipt_user
+      POSTGRES_PASSWORD: receipt_password
+      POSTGRES_DB: receipt_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://receipt_user:receipt_password@db/receipt_db
+      - SECRET_KEY=supersecretkey-dev
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

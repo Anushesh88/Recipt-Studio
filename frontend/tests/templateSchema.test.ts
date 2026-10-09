@@ -1,0 +1,82 @@
+import { describe, it, expect } from "vitest";
+import { canvasSchema } from "../src/schema/templateSchema";
+
+describe("Canvas Schema", () => {
+  const validPage = { preset: "thermal80" as const, width: 302, height: 640, heightMode: "auto" as const, background: "#FFFFFF", margin: 12 };
+  
+  const validText = {
+    id: "el_1", type: "text" as const, x: 10, y: 10, width: 100, height: 20, zIndex: 1, locked: false,
+    props: { content: "Hello {{customer.name}}", fontFamily: "Inter", fontSize: 12, fontWeight: 400, color: "#000000", align: "left" as const, lineHeight: 1.3 }
+  };
+
+  const validItemsTable = (idSuffix = "1") => ({
+    id: `table_${idSuffix}`, type: "items_table" as const, x: 10, y: 50, width: 280, height: 100, zIndex: 2, locked: false,
+    props: {
+      binding: "receipt.items" as const,
+      columns: [{ key: "desc", label: "Desc", width: 1.0, align: "left" as const }],
+      fontFamily: "Inter", fontSize: 12, lineHeight: 1.3, rowPadding: 4, headerBold: true, rowDivider: true, color: "#000000"
+    }
+  });
+
+  it("should validate a valid canvas", () => {
+    const result = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [validText, validItemsTable()]
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("should reject unknown variables", () => {
+    const textWithUnknownVar = {
+      ...validText,
+      props: { ...validText.props, content: "Hello {{unknown.var}}" }
+    };
+    const result = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [textWithUnknownVar]
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some(e => e.message.includes("Unknown variables"))).toBe(true);
+    }
+  });
+
+  it("should reject a second items_table", () => {
+    const result = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [validItemsTable("1"), validItemsTable("2")]
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.some(e => e.message.includes("Max one items_table"))).toBe(true);
+    }
+  });
+
+  it("should reject unknown element types", () => {
+    const result = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [{ id: "el_1", type: "unknown_type", x: 10, y: 10, width: 100, height: 20, props: {} }]
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("should reject out-of-range values", () => {
+    const resultX = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [{ ...validText, x: -10 }]
+    });
+    expect(resultX.success).toBe(false);
+
+    const resultFontSize = canvasSchema.safeParse({
+      schemaVersion: 1,
+      page: validPage,
+      elements: [{ ...validText, props: { ...validText.props, fontSize: 5 } }]
+    });
+    expect(resultFontSize.success).toBe(false);
+  });
+});
