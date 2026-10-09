@@ -8,7 +8,7 @@ export const ImageEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
     <img
       src={`/api/assets/${element.props.assetId}`} // mock URL
       alt="image"
-      style={{ width: "100%", height: "100%", objectFit: element.props.fit as any }}
+      style={{ width: "100%", height: "100%", objectFit: element.props.fit as React.CSSProperties['objectFit'] }}
     />
   ) : (
     <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-500 text-sm">

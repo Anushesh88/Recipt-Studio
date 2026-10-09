@@ -69,7 +69,7 @@ export const useEditorStore = create<EditorState>()(
           saveSnapshot(draft);
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
-            updater(el as any);
+            updater(el as unknown as CanvasElement);
           }
         }),
 

@@ -35,12 +35,13 @@ export const Canvas: React.FC = () => {
       <div
         style={{
           transform: `scale(${zoom})`,
-          transformOrigin: "center center",
+          transformOrigin: "top left",
           transition: "transform 0.1s",
         }}
         className="relative shadow-lg flex-shrink-0"
       >
         <div
+          id="canvas"
           ref={setRefs}
           onPointerDown={handlePointerDown}
           style={{

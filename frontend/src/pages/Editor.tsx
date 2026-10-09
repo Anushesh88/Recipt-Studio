@@ -1,9 +1,10 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState } from "react";
 import { DndContext, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Palette } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
 import { useEditorStore } from "../store/editorStore";
 import { DEFAULT_ELEMENTS, GRID_SIZE } from "../lib/units";
+import { computeDropCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
 import type { CanvasElement } from "../schema/templateSchema";
 
@@ -18,6 +19,8 @@ export const Editor: React.FC = () => {
   const selectedId = useEditorStore((state) => state.selectedId);
   const reorderElement = useEditorStore((state) => state.reorderElement);
 
+  const [toast, setToast] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
@@ -31,25 +34,33 @@ export const Editor: React.FC = () => {
     if (!type) return;
 
     if (type === "items_table" && elements.some((el) => el.type === "items_table")) {
-      alert("Only one items table is allowed.");
+      setToast("Only one items table is allowed.");
+      setTimeout(() => setToast(null), 3000);
       return;
     }
     if (type === "totals" && elements.some((el) => el.type === "totals")) {
-      alert("Only one totals element is allowed.");
+      setToast("Only one totals element is allowed.");
+      setTimeout(() => setToast(null), 3000);
       return;
     }
 
     if (!active.rect.current.translated || !over.rect) return;
 
-    const unscaledX = (active.rect.current.translated.left - over.rect.left) / zoom;
-    const unscaledY = (active.rect.current.translated.top - over.rect.top) / zoom;
+    const { x, y } = computeDropCoords(
+      active.rect.current.translated.left,
+      active.rect.current.translated.top,
+      over.rect.left,
+      over.rect.top,
+      zoom,
+      GRID_SIZE
+    );
 
     const defaults = DEFAULT_ELEMENTS[type];
     const newElement: CanvasElement = {
       id: generateId(),
       type,
-      x: Math.max(0, Math.round(unscaledX / GRID_SIZE) * GRID_SIZE), // snap drop
-      y: Math.max(0, Math.round(unscaledY / GRID_SIZE) * GRID_SIZE),
+      x,
+      y,
       zIndex: elements.length + 1,
       ...defaults,
     } as CanvasElement;
@@ -72,6 +83,8 @@ export const Editor: React.FC = () => {
       } else {
         undo();
       }
+    } else if (e.key === "y" && (e.ctrlKey || e.metaKey)) {
+      redo();
     } else if (e.key === "]" && (e.ctrlKey || e.metaKey)) {
       if (selectedId) reorderElement(selectedId, "up");
     } else if (e.key === "[" && (e.ctrlKey || e.metaKey)) {
@@ -104,6 +117,12 @@ export const Editor: React.FC = () => {
           <Canvas />
           {/* Phase 3 Inspector will go on the right */}
         </div>
+
+        {toast && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50">
+            {toast}
+          </div>
+        )}
       </div>
     </DndContext>
   );

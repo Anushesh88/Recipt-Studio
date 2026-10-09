@@ -9,6 +9,7 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
   const selectElement = useEditorStore((state) => state.selectElement);
   const moveElement = useEditorStore((state) => state.moveElement);
   const resizeElement = useEditorStore((state) => state.resizeElement);
+  const zoom = useEditorStore((state) => state.zoom);
   
   const isSelected = selectedId === element.id;
   const targetRef = useRef<HTMLDivElement>(null);
@@ -19,7 +20,7 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
   };
 
   let ElNode: React.ReactNode = null;
-  const props = { element: element as any, ref: targetRef, className: isSelected ? "ring-2 ring-blue-500" : "" };
+  const props = { element: element as never, ref: targetRef, className: isSelected ? "ring-2 ring-blue-500" : "" };
 
   switch (element.type) {
     case "text":
@@ -56,6 +57,7 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
           draggable={true}
           resizable={true}
           snappable={true}
+          zoom={zoom}
           // react-moveable modifies the DOM directly; we want to catch the end event and sync to store
           // Alternatively, we can use onDrag/onResize to sync live, but zustand updates might be fast enough.
           onDrag={(e) => {

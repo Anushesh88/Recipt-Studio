@@ -59,7 +59,7 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
                     textOverflow: "ellipsis",
                   }}
                 >
-                  {(row as any)[col.key] || "-"}
+                  {(row as Record<string, string>)[col.key] || "-"}
                 </td>
               ))}
             </tr>
