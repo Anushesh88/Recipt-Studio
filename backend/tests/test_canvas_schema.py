@@ -11,10 +11,10 @@ from app.schemas.canvas import (
 )
 
 
-def get_valid_page():
+def get_valid_page() -> PageConfig:
     return PageConfig(preset="thermal80", width=302, height=640, heightMode="auto", background="#FFFFFF", margin=12)
 
-def get_valid_text():
+def get_valid_text() -> TextElement:
     return TextElement(
         id="el_1", type="text", x=10, y=10, width=100, height=20,
         props=TextProps(
@@ -22,21 +22,21 @@ def get_valid_text():
         )
     )
 
-def get_valid_items_table(id_suffix="1"):
+def get_valid_items_table(id_suffix: str = "1") -> ItemsTableElement:
     return ItemsTableElement(
         id=f"table_{id_suffix}", type="items_table", x=10, y=50, width=280, height=100,
         props=ItemsTableProps(
             binding="receipt.items",
-            columns=[{"key": "desc", "label": "Desc", "width": 1.0, "align": "left"}],
+            columns=[{"key": "desc", "label": "Desc", "width": 1.0, "align": "left"}],  # type: ignore
             fontFamily="Inter", fontSize=12, color="#000000"
         )
     )
 
-def test_valid_canvas():
+def test_valid_canvas() -> None:
     canvas = Canvas(page=get_valid_page(), elements=[get_valid_text(), get_valid_items_table()])
     assert len(canvas.elements) == 2
 
-def test_unknown_variable():
+def test_unknown_variable() -> None:
     with pytest.raises(ValidationError) as exc:
         TextElement(
             id="el_1", type="text", x=10, y=10, width=100, height=20,
@@ -46,18 +46,18 @@ def test_unknown_variable():
         )
     assert "Unknown variable: unknown.var" in str(exc.value)
 
-def test_second_items_table():
+def test_second_items_table() -> None:
     with pytest.raises(ValidationError) as exc:
         Canvas(page=get_valid_page(), elements=[get_valid_items_table("1"), get_valid_items_table("2")])
     assert "Max one items_table element is allowed" in str(exc.value)
 
-def test_unknown_element_type():
+def test_unknown_element_type() -> None:
     with pytest.raises(ValidationError):
         Canvas(page=get_valid_page(), elements=[{
             "id": "el_1", "type": "unknown_type", "x": 10, "y": 10, "width": 100, "height": 20, "props": {}
-        }])
+        }])  # type: ignore
 
-def test_out_of_range_values():
+def test_out_of_range_values() -> None:
     with pytest.raises(ValidationError):
         TextElement(
             id="el_1", type="text", x=-10, y=10, width=100, height=20, # x is -10

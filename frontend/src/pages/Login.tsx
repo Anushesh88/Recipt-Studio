@@ -25,7 +25,16 @@ export default function Login() {
       });
       setToken(res.data.access_token);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'An error occurred');
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        if (Array.isArray(detail)) {
+          setError(detail.map((d: any) => d.msg).join(', '));
+        } else {
+          setError(detail);
+        }
+      } else {
+        setError('An error occurred');
+      }
     }
   };
 

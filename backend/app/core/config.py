@@ -1,10 +1,16 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
 
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DB_PATH = BACKEND_DIR / "receipt.db"
 
 class Settings(BaseSettings):
-    DATABASE_URL: str = "sqlite+aiosqlite:///./receipt.db"
+    DATABASE_URL: str = f"sqlite+aiosqlite:///{DEFAULT_DB_PATH}"
     SECRET_KEY: str = "supersecretkey-dev"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 settings = Settings()

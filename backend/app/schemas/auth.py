@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr
+import uuid
+
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 
 class Token(BaseModel):
@@ -13,11 +15,10 @@ class UserCreate(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     email: EmailStr
     business_name: str | None = None
     receipt_prefix: str
     numbering_mode: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

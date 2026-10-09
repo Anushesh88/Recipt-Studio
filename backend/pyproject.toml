@@ -40,3 +40,6 @@ exclude = ["alembic"]
 
 [tool.ruff]
 line-length = 88
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Security", "Depends", "Security"]

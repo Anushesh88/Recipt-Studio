@@ -1,6 +1,7 @@
+import uuid
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from .canvas import Canvas
 
@@ -14,8 +15,8 @@ class TemplateUpdate(BaseModel):
     canvas: Canvas | None = None
 
 class TemplateResponse(BaseModel):
-    id: str
-    user_id: str
+    id: uuid.UUID
+    user_id: uuid.UUID
     name: str
     canvas: Canvas
     schema_version: int
@@ -23,5 +24,4 @@ class TemplateResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
