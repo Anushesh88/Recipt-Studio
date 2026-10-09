@@ -1,0 +1,79 @@
+{
+  "_comment": "Receipt money. line_total = round(qty * unit_price); subtotal = sum; taxable = subtotal - discount; tax = round(taxable * tax_rate); total = taxable + tax; every amount rounds half-up to cents. Run by frontend/tests/sharedFixtures.test.ts (lib/money.ts) and backend/tests/test_shared_fixtures.py (totals_service).",
+  "cases": [
+    {
+      "name": "docs example",
+      "items": [{ "qty": "2", "unit_price": "4.50" }],
+      "tax_rate": "0.08",
+      "discount": "0.00",
+      "expected": { "line_totals": ["9.00"], "subtotal": "9.00", "discount": "0.00", "tax": "0.72", "total": "9.72" }
+    },
+    {
+      "name": "line totals round half-up",
+      "items": [{ "qty": "0.5", "unit_price": "0.25" }],
+      "tax_rate": "0",
+      "discount": "0",
+      "expected": { "line_totals": ["0.13"], "subtotal": "0.13", "discount": "0.00", "tax": "0.00", "total": "0.13" }
+    },
+    {
+      "name": "discount applies before tax",
+      "items": [{ "qty": "1", "unit_price": "100.00" }],
+      "tax_rate": "0.1",
+      "discount": "10.00",
+      "expected": { "line_totals": ["100.00"], "subtotal": "100.00", "discount": "10.00", "tax": "9.00", "total": "99.00" }
+    },
+    {
+      "name": "tax rounds to cents",
+      "items": [{ "qty": "3", "unit_price": "3.33" }],
+      "tax_rate": "0.0825",
+      "discount": "0",
+      "expected": { "line_totals": ["9.99"], "subtotal": "9.99", "discount": "0.00", "tax": "0.82", "total": "10.81" }
+    },
+    {
+      "name": "half a cent of tax rounds up",
+      "items": [{ "qty": "1", "unit_price": "0.50" }],
+      "tax_rate": "0.01",
+      "discount": "0",
+      "expected": { "line_totals": ["0.50"], "subtotal": "0.50", "discount": "0.00", "tax": "0.01", "total": "0.51" }
+    },
+    {
+      "name": "fractional quantity",
+      "items": [{ "qty": "1.333", "unit_price": "2.99" }],
+      "tax_rate": "0",
+      "discount": "0",
+      "expected": { "line_totals": ["3.99"], "subtotal": "3.99", "discount": "0.00", "tax": "0.00", "total": "3.99" }
+    },
+    {
+      "name": "several lines with discount and tax",
+      "items": [
+        { "qty": "2", "unit_price": "4.50" },
+        { "qty": "1", "unit_price": "3.25" },
+        { "qty": "3", "unit_price": "0.99" }
+      ],
+      "tax_rate": "0.07",
+      "discount": "1.22",
+      "expected": { "line_totals": ["9.00", "3.25", "2.97"], "subtotal": "15.22", "discount": "1.22", "tax": "0.98", "total": "14.98" }
+    },
+    {
+      "name": "no items",
+      "items": [],
+      "tax_rate": "0.08",
+      "discount": "0",
+      "expected": { "line_totals": [], "subtotal": "0.00", "discount": "0.00", "tax": "0.00", "total": "0.00" }
+    },
+    {
+      "name": "discount equal to the subtotal",
+      "items": [{ "qty": "1", "unit_price": "5.00" }],
+      "tax_rate": "0.2",
+      "discount": "5.00",
+      "expected": { "line_totals": ["5.00"], "subtotal": "5.00", "discount": "5.00", "tax": "0.00", "total": "0.00" }
+    },
+    {
+      "name": "discount larger than the subtotal is an error",
+      "items": [{ "qty": "1", "unit_price": "5.00" }],
+      "tax_rate": "0",
+      "discount": "5.01",
+      "error": "DISCOUNT_TOO_LARGE"
+    }
+  ]
+}

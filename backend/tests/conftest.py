@@ -16,8 +16,8 @@ AuthHeaders = dict[str, str]
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncGenerator[AsyncClient, None]:
-    """API client backed by a fresh in-memory database per test."""
+async def session_factory() -> AsyncGenerator[async_sessionmaker[AsyncSession], None]:
+    """Sessions on a fresh in-memory database per test (shared with `client`)."""
     # StaticPool: every session shares the one in-memory connection
     engine = create_async_engine(
         "sqlite+aiosqlite:///:memory:",
@@ -26,7 +26,15 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def client(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> AsyncGenerator[AsyncClient, None]:
+    """API client backed by the per-test database."""
 
     async def override_get_db() -> AsyncGenerator[AsyncSession, None]:
         async with session_factory() as session:
@@ -36,7 +44,6 @@ async def client() -> AsyncGenerator[AsyncClient, None]:
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
     app.dependency_overrides.pop(get_db, None)
-    await engine.dispose()
 
 
 @pytest.fixture

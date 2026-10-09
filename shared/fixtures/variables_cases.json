@@ -1,0 +1,65 @@
+{
+  "_comment": "Variable placeholder cases. Run by frontend/tests/sharedFixtures.test.ts (lib/variables.ts) and backend/tests/test_shared_fixtures.py (variables_service).",
+  "find": [
+    {
+      "text": "Hi {{customer.name}}, receipt #{{ receipt.number }}",
+      "variables": ["customer.name", "receipt.number"],
+      "unknown": []
+    },
+    {
+      "text": "Not variables: {{Customer.Name}} {{custom.table1}} {customer.name} {{a.b.c}}",
+      "variables": [],
+      "unknown": []
+    },
+    {
+      "text": "{{foo.bar}} {{foo.bar}} {{customer.name}} {{oops}}",
+      "variables": ["foo.bar", "foo.bar", "customer.name", "oops"],
+      "unknown": ["foo.bar", "oops"]
+    },
+    {
+      "text": "Table {{custom.table_no}} served by {{custom.server_name}}",
+      "variables": ["custom.table_no", "custom.server_name"],
+      "unknown": []
+    },
+    {
+      "text": "{{custom}} is not a custom variable",
+      "variables": ["custom"],
+      "unknown": ["custom"]
+    },
+    {
+      "text": "{{business.name}}{{receipt.date}}{{receipt.payment_method}}{{receipt.currency}}{{receipt.notes}}{{customer.email}}",
+      "variables": ["business.name", "receipt.date", "receipt.payment_method", "receipt.currency", "receipt.notes", "customer.email"],
+      "unknown": []
+    }
+  ],
+  "extract": [
+    {
+      "name": "text and QR content only, unique, in order of first use",
+      "elements": [
+        { "type": "text", "props": { "content": "{{business.name}} - {{receipt.number}}" } },
+        { "type": "items_table", "props": { "binding": "receipt.items" } },
+        { "type": "qr", "props": { "content": "{{receipt.number}}|{{custom.table_no}}" } },
+        { "type": "text", "props": { "content": "{{business.name}} {{bogus.key}}" } }
+      ],
+      "variables": ["business.name", "receipt.number", "custom.table_no", "bogus.key"]
+    }
+  ],
+  "resolve": [
+    {
+      "text": "Hello {{customer.name}}!",
+      "values": { "customer.name": "Jane" },
+      "resolved": "Hello Jane!"
+    },
+    {
+      "text": "Table {{ custom.table_no }} / notes: {{receipt.notes}}",
+      "values": { "custom.table_no": "12" },
+      "resolved": "Table 12 / notes: "
+    },
+    {
+      "_comment": "Single pass: a value that looks like a placeholder stays literal",
+      "text": "<b>{{customer.name}}</b>",
+      "values": { "customer.name": "{{receipt.number}}", "receipt.number": "R-0001" },
+      "resolved": "<b>{{receipt.number}}</b>"
+    }
+  ]
+}

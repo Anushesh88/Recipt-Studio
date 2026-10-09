@@ -1,10 +1,9 @@
-import re
 from collections import Counter
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-VARIABLE_REGEX = re.compile(r"\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}")
+from app.services.variables_service import unknown_variables
 
 MAX_CANVAS_BYTES = 256 * 1024  # serialized template size limit (docs/03-schema.md)
 
@@ -15,16 +14,11 @@ FontFamily = Literal[
     "Lato", "Poppins", "Merriweather", "Roboto Mono",
 ]
 
-BUILTIN_VARIABLES = {
-    "business.name", "customer.name", "customer.email", "receipt.number",
-    "receipt.date", "receipt.payment_method", "receipt.currency", "receipt.notes"
-}
-
 def validate_variables(text: str) -> None:
-    matches = VARIABLE_REGEX.findall(text)
-    for match in matches:
-        if match not in BUILTIN_VARIABLES and not match.startswith("custom."):
-            raise ValueError(f"Unknown variable: {match}")
+    """Text / QR content may only use built-in or custom.* variables."""
+    unknown = unknown_variables(text)
+    if unknown:
+        raise ValueError(f"Unknown variable: {', '.join(unknown)}")
 
 class BaseElement(BaseModel):
     id: str
