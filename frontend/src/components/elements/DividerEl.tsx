@@ -1,11 +1,10 @@
 import React from "react";
-import { BaseElementWrapper } from "./BaseElementWrapper";
-import type { CanvasElement } from "../../schema/templateSchema";
+import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
 
-export const DividerEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "divider" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
+export const DividerEl = React.forwardRef<HTMLDivElement, ElementProps<"divider">>(({ element, ...domProps }, ref) => {
   const { props } = element;
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
+    <BaseElementWrapper element={element} ref={ref} {...domProps}>
       <div
         style={{
           width: "100%",
@@ -24,3 +23,4 @@ export const DividerEl = React.forwardRef<HTMLDivElement, { element: Extract<Can
     </BaseElementWrapper>
   );
 });
+DividerEl.displayName = "DividerEl";

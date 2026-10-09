@@ -53,6 +53,31 @@ export const FONT_WEIGHTS = [
   { value: 700, label: "Bold" },
 ] as const;
 
+export const ELEMENT_LABELS: Record<CanvasElement["type"], string> = {
+  text: "Text",
+  image: "Image",
+  items_table: "Items table",
+  totals: "Totals",
+  qr: "QR code",
+  signature: "Signature",
+  divider: "Divider",
+};
+
+// Line-item fields an items_table column can show (receipts.data items[])
+export const ITEM_COLUMN_KEYS = [
+  { key: "description", label: "Item" },
+  { key: "qty", label: "Qty" },
+  { key: "unit_price", label: "Price" },
+  { key: "line_total", label: "Total" },
+] as const;
+
+export const TOTALS_FIELDS = [
+  { key: "subtotal", label: "Subtotal" },
+  { key: "tax", label: "Tax" },
+  { key: "discount", label: "Discount" },
+  { key: "total", label: "Total" },
+] as const;
+
 // The editor shows the items table with this many placeholder rows; its default
 // height is exactly header + these rows, per the Layout Algorithm.
 export const ITEMS_TABLE_SAMPLE_ROWS = 3;
@@ -87,6 +112,16 @@ export const PAGE_PRESETS: Record<PagePreset, z.infer<typeof pageConfigSchema>> 
 };
 
 export const DEFAULT_PAGE = PAGE_PRESETS.thermal80;
+
+export const PAGE_PRESET_LABELS: Record<PagePreset, string> = {
+  thermal80: "Thermal 80 mm (auto height)",
+  a5: "A5 portrait",
+  a4: "A4 portrait",
+};
+
+// Editable design height range for auto-height (thermal) pages
+export const MIN_DESIGN_HEIGHT = 200;
+export const MAX_DESIGN_HEIGHT = 3000;
 
 const DEFAULT_TABLE_PROPS: Extract<CanvasElement, { type: "items_table" }>["props"] = {
   binding: "receipt.items",

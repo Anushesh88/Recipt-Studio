@@ -11,8 +11,11 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
+import { Link } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
 import { Palette, PaletteDragPreview } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
+import { Inspector } from "../components/inspector/Inspector";
 import { useEditorStore } from "../store/editorStore";
 import { DEFAULT_ELEMENTS, GRID_SIZE, TOAST_DURATION_MS } from "../lib/units";
 import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
@@ -22,6 +25,11 @@ import type { CanvasElement } from "../schema/templateSchema";
 if (typeof window !== "undefined") {
   (window as unknown as Window & { __editorStore?: typeof useEditorStore }).__editorStore = useEditorStore;
 }
+
+// Focus targets where the editor's keyboard shortcuts don't apply: form fields,
+// the inspector, and popover / dropdown content (rendered in portals)
+const SHORTCUT_EXEMPT_SELECTOR =
+  "input, textarea, select, [contenteditable='true'], [data-inspector], [data-variable-menu], [role='listbox'], [role='dialog']";
 
 // Pins the drag preview's top-left to the cursor, which is exactly where the
 // element lands on drop (instead of wherever the palette tile was grabbed).
@@ -128,10 +136,12 @@ export const Editor: React.FC = () => {
   };
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-      return; // Do not intercept if typing in an input
+    // Leave keys alone while typing or using the inspector / menus, so e.g.
+    // Backspace in a field or on a dropdown never deletes the selected element
+    if (e.target instanceof Element && e.target.closest(SHORTCUT_EXEMPT_SELECTOR)) {
+      return;
     }
-    
+
     if (e.key === "Delete" || e.key === "Backspace") {
       if (selectedId) {
         deleteElement(selectedId);
@@ -170,7 +180,14 @@ export const Editor: React.FC = () => {
     >
       <div className="flex h-screen w-full flex-col overflow-hidden">
         <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between shrink-0">
-          <h1 className="font-bold text-lg">Receipt Studio - Editor (Phase 2)</h1>
+          <div className="flex items-center gap-3">
+            <Link to="/templates" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
+              <ChevronLeft className="size-4" />
+              Templates
+            </Link>
+            <div className="w-px h-6 bg-gray-300" />
+            <h1 className="font-bold text-lg">Receipt Studio · Editor</h1>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium text-gray-700">{Math.round(zoom * 100)}%</span>
             <button
@@ -188,7 +205,7 @@ export const Editor: React.FC = () => {
         <div className="flex flex-1 overflow-hidden">
           <Palette />
           <Canvas />
-          {/* Phase 3 Inspector will go on the right */}
+          <Inspector />
         </div>
 
         {toast && (

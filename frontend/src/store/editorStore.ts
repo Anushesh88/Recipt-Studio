@@ -1,8 +1,19 @@
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
 import type { CanvasElement, Canvas } from "../schema/templateSchema";
-import { DEFAULT_PAGE, GRID_SIZE, MAX_HISTORY, MIN_ELEMENT_SIZE } from "../lib/units";
+import {
+  DEFAULT_PAGE,
+  GRID_SIZE,
+  ITEMS_TABLE_SAMPLE_ROWS,
+  MAX_DESIGN_HEIGHT,
+  MAX_HISTORY,
+  MIN_DESIGN_HEIGHT,
+  MIN_ELEMENT_SIZE,
+  PAGE_PRESETS,
+  type PagePreset,
+} from "../lib/units";
 import { floorToGrid, maxGridPosition, snapToGrid } from "../lib/canvasUtils";
+import { tableHeight } from "../lib/layout";
 
 interface EditorSnapshot {
   page: Canvas["page"];
@@ -13,23 +24,30 @@ interface EditorState {
   page: Canvas["page"];
   elements: CanvasElement[];
   selectedId: string | null;
+  // Text element being edited inline on the canvas (double-click)
+  editingId: string | null;
   zoom: number;
 
   past: EditorSnapshot[];
   future: EditorSnapshot[];
+  // See saveSnapshot: consecutive edits with this key share one undo step
+  lastCoalesceKey: string | null;
 
   // Actions
   addElement: (el: CanvasElement) => void;
-  updateElement: (id: string, updater: (el: CanvasElement) => void) => void;
+  updateElement: (id: string, updater: (el: CanvasElement) => void, options?: { coalesceKey?: string }) => void;
   moveElement: (id: string, x: number, y: number) => void;
   resizeElement: (id: string, width: number, height: number) => void;
   updateElementGeometry: (id: string, geometry: { x?: number, y?: number, width?: number, height?: number }) => void;
   deleteElement: (id: string) => void;
   reorderElement: (id: string, direction: "up" | "down" | "top" | "bottom") => void;
   loadTemplate: (canvas: Canvas) => void;
-  
+  setPagePreset: (preset: PagePreset) => void;
+  updatePage: (changes: { background?: string; height?: number }) => void;
+
   setZoom: (zoom: number) => void;
   selectElement: (id: string | null) => void;
+  setEditingId: (id: string | null) => void;
 
   undo: () => void;
   redo: () => void;
@@ -71,6 +89,20 @@ const applyGeometry = (el: CanvasElement, geometry: Geometry) => {
   el.height = geometry.height;
 };
 
+// Keeps derived geometry in step with props, and the element inside the page.
+// The items table's height is always header + sample rows (the Layout Algorithm's
+// designed_h), so it follows font size / line height / row padding changes.
+const normalizeElement = (page: Canvas["page"], el: CanvasElement) => {
+  if (el.type === "items_table") {
+    el.height = tableHeight(el.props, ITEMS_TABLE_SAMPLE_ROWS);
+  }
+  applyGeometry(el, fitGeometry(page, el, {}));
+};
+
+// Lowest element edge, rounded up to the grid
+const contentBottom = (elements: CanvasElement[]) =>
+  Math.ceil(Math.max(0, ...elements.map((e) => e.y + e.height)) / GRID_SIZE) * GRID_SIZE;
+
 // zIndex is informational; keep it mirroring the array (paint) order
 const renumberZIndex = (elements: CanvasElement[]) => {
   elements.forEach((e, i) => {
@@ -78,9 +110,20 @@ const renumberZIndex = (elements: CanvasElement[]) => {
   });
 };
 
+// After undo/redo the selected / edited element may no longer exist
+const clearMissingSelection = (draft: EditorState) => {
+  const exists = (id: string | null) => id !== null && draft.elements.some((e) => e.id === id);
+  if (!exists(draft.selectedId)) draft.selectedId = null;
+  if (!exists(draft.editingId)) draft.editingId = null;
+};
+
 export const useEditorStore = create<EditorState>()(
   immer((set) => {
-    const saveSnapshot = (draft: EditorState) => {
+    // Consecutive edits with the same coalesceKey (typing in one inspector field,
+    // or one inline-editing session) share a single undo step.
+    const saveSnapshot = (draft: EditorState, coalesceKey?: string) => {
+      if (coalesceKey !== undefined && draft.lastCoalesceKey === coalesceKey) return;
+      draft.lastCoalesceKey = coalesceKey ?? null;
       draft.past.push({
         page: JSON.parse(JSON.stringify(draft.page)),
         elements: JSON.parse(JSON.stringify(draft.elements)),
@@ -95,10 +138,12 @@ export const useEditorStore = create<EditorState>()(
       page: DEFAULT_PAGE,
       elements: [],
       selectedId: null,
+      editingId: null,
       zoom: 1,
 
       past: [],
       future: [],
+      lastCoalesceKey: null,
 
       addElement: (el) =>
         set((draft) => {
@@ -108,12 +153,13 @@ export const useEditorStore = create<EditorState>()(
           draft.selectedId = el.id;
         }),
 
-      updateElement: (id, updater) =>
+      updateElement: (id, updater, options) =>
         set((draft) => {
-          saveSnapshot(draft);
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
-            updater(el as unknown as CanvasElement);
+            saveSnapshot(draft, options?.coalesceKey);
+            updater(el);
+            normalizeElement(draft.page, el);
           }
         }),
 
@@ -137,7 +183,8 @@ export const useEditorStore = create<EditorState>()(
             const maxHeight = page.heightMode === "fixed" ? floorToGrid(page.height - el.y, GRID_SIZE) : Infinity;
             applyGeometry(el, fitGeometry(page, el, {
               width: Math.min(width, maxWidth),
-              height: Math.min(height, maxHeight),
+              // the items table's height is derived from its rows
+              height: el.type === "items_table" ? undefined : Math.min(height, maxHeight),
             }));
           }
         }),
@@ -147,7 +194,9 @@ export const useEditorStore = create<EditorState>()(
           const el = draft.elements.find((e) => e.id === id);
           if (el) {
             saveSnapshot(draft);
-            applyGeometry(el, fitGeometry(draft.page, el, geometry));
+            // the items table's height is derived from its rows
+            const change = el.type === "items_table" ? { ...geometry, height: undefined } : geometry;
+            applyGeometry(el, fitGeometry(draft.page, el, change));
           }
         }),
 
@@ -158,6 +207,9 @@ export const useEditorStore = create<EditorState>()(
           renumberZIndex(draft.elements);
           if (draft.selectedId === id) {
             draft.selectedId = null;
+          }
+          if (draft.editingId === id) {
+            draft.editingId = null;
           }
         }),
 
@@ -189,9 +241,38 @@ export const useEditorStore = create<EditorState>()(
         set((draft) => {
           draft.past = [];
           draft.future = [];
+          draft.lastCoalesceKey = null;
           draft.page = canvas.page;
           draft.elements = canvas.elements;
           draft.selectedId = null;
+          draft.editingId = null;
+        }),
+
+      setPagePreset: (preset) =>
+        set((draft) => {
+          if (draft.page.preset === preset) return;
+          saveSnapshot(draft);
+          const next: Canvas["page"] = { ...PAGE_PRESETS[preset], background: draft.page.background };
+          if (next.heightMode === "auto") {
+            // Thermal pages grow, so keep every element visible rather than squashing them
+            next.height = Math.max(next.height, contentBottom(draft.elements));
+          }
+          draft.page = next;
+          // Fixed pages pull elements back inside; narrower pages cap widths
+          draft.elements.forEach((el) => normalizeElement(next, el));
+        }),
+
+      updatePage: (changes) =>
+        set((draft) => {
+          saveSnapshot(draft, "page:" + Object.keys(changes).sort().join(","));
+          if (changes.background !== undefined) {
+            draft.page.background = changes.background;
+          }
+          // Only an auto-height page's design height is editable, and never below its content
+          if (changes.height !== undefined && draft.page.heightMode === "auto") {
+            const min = Math.max(MIN_DESIGN_HEIGHT, contentBottom(draft.elements));
+            draft.page.height = Math.min(MAX_DESIGN_HEIGHT, Math.max(min, snapToGrid(changes.height, GRID_SIZE)));
+          }
         }),
 
       setZoom: (zoom) =>
@@ -202,6 +283,17 @@ export const useEditorStore = create<EditorState>()(
       selectElement: (id) =>
         set((draft) => {
           draft.selectedId = id;
+          if (draft.editingId !== id) {
+            draft.editingId = null;
+          }
+        }),
+
+      setEditingId: (id) =>
+        set((draft) => {
+          draft.editingId = id;
+          if (id) {
+            draft.selectedId = id;
+          }
         }),
 
       undo: () =>
@@ -218,10 +310,8 @@ export const useEditorStore = create<EditorState>()(
           const previous = draft.past.pop()!;
           draft.page = previous.page;
           draft.elements = previous.elements;
-          // Selection might be invalid if element was deleted, we'll just clear it if not found
-          if (draft.selectedId && !draft.elements.find(e => e.id === draft.selectedId)) {
-            draft.selectedId = null;
-          }
+          draft.lastCoalesceKey = null;
+          clearMissingSelection(draft);
         }),
 
       redo: () =>
@@ -238,6 +328,8 @@ export const useEditorStore = create<EditorState>()(
           const next = draft.future.pop()!;
           draft.page = next.page;
           draft.elements = next.elements;
+          draft.lastCoalesceKey = null;
+          clearMissingSelection(draft);
         }),
     };
   })

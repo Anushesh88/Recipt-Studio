@@ -2,13 +2,22 @@ import React from "react";
 import type { CanvasElement } from "../../schema/templateSchema";
 import { MIN_ELEMENT_SIZE } from "../../lib/units";
 
+// DOM hooks the editor attaches to an element; previews pass none of them
+export interface ElementDomProps {
+  className?: string;
+  onPointerDown?: React.PointerEventHandler<HTMLDivElement>;
+  onClick?: React.MouseEventHandler<HTMLDivElement>;
+  onDoubleClick?: React.MouseEventHandler<HTMLDivElement>;
+}
+
+export type ElementProps<T extends CanvasElement["type"]> = {
+  element: Extract<CanvasElement, { type: T }>;
+} & ElementDomProps;
+
 export const BaseElementWrapper = React.forwardRef<HTMLDivElement, {
   element: CanvasElement;
-  className?: string;
   children: React.ReactNode;
-  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
-}>(({ element, className = "", children, onPointerDown, onClick }, ref) => {
+} & ElementDomProps>(({ element, className = "", children, onPointerDown, onClick, onDoubleClick }, ref) => {
   return (
     <div
       ref={ref}
@@ -22,6 +31,7 @@ export const BaseElementWrapper = React.forwardRef<HTMLDivElement, {
       className={`absolute select-none ${className}`}
       onPointerDown={onPointerDown}
       onClick={onClick}
+      onDoubleClick={onDoubleClick}
       // No CSS z-index: the elements array order is the canonical paint order and
       // elements are rendered in that order, so later siblings paint on top.
       // element.zIndex is informational only (docs/03-schema.md).
@@ -38,4 +48,3 @@ export const BaseElementWrapper = React.forwardRef<HTMLDivElement, {
   );
 });
 BaseElementWrapper.displayName = "BaseElementWrapper";
-

@@ -1,22 +1,17 @@
 import { z } from "zod";
 import { FONT_FAMILIES, MAX_CANVAS_BYTES, MAX_ELEMENTS, MIN_ELEMENT_SIZE } from "../lib/units";
+import { findUnknownVariables } from "../lib/variables";
 
-const VARIABLE_REGEX = /\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}/g;
-const BUILTIN_VARIABLES = new Set([
-  "business.name", "customer.name", "customer.email", "receipt.number",
-  "receipt.date", "receipt.payment_method", "receipt.currency", "receipt.notes"
-]);
-
-const validateVariables = (text: string) => {
-  const matches = Array.from(text.matchAll(VARIABLE_REGEX));
-  for (const match of matches) {
-    const variable = match[1];
-    if (!BUILTIN_VARIABLES.has(variable) && !variable.startsWith("custom.")) {
-      return false;
-    }
+// Text/QR content may only use built-in or custom.* variables
+const variableContent = z.string().superRefine((text, ctx) => {
+  const unknown = findUnknownVariables(text);
+  if (unknown.length > 0) {
+    ctx.addIssue({
+      code: "custom",
+      message: `Unknown variables in content: ${unknown.map((key) => `{{${key}}}`).join(", ")}`,
+    });
   }
-  return true;
-};
+});
 
 // Only the curated, bundled fonts (FONT_FAMILIES)
 const fontFamily = z.enum(FONT_FAMILIES);
@@ -34,7 +29,7 @@ const baseElement = z.object({
 });
 
 const textProps = z.object({
-  content: z.string().refine(validateVariables, "Unknown variables in content"),
+  content: variableContent,
   fontFamily,
   fontSize: z.number().min(6).max(96),
   fontWeight: z.number().default(400),
@@ -98,7 +93,7 @@ export const totalsElementSchema = baseElement.extend({
 });
 
 const qrProps = z.object({
-  content: z.string().refine(validateVariables, "Unknown variables in content"),
+  content: variableContent,
   errorCorrection: z.enum(["L", "M", "Q", "H"]).default("M"),
 });
 

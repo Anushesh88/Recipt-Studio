@@ -1,6 +1,5 @@
 import React from "react";
-import { BaseElementWrapper } from "./BaseElementWrapper";
-import type { CanvasElement } from "../../schema/templateSchema";
+import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
 import { ITEMS_TABLE_SAMPLE_ROWS, fontStack } from "../../lib/units";
 import { tableRowHeight } from "../../lib/layout";
 
@@ -15,7 +14,7 @@ const SAMPLE_ITEMS: Record<string, string>[] = [
 ];
 const SAMPLE_ROWS = Array.from({ length: ITEMS_TABLE_SAMPLE_ROWS }, (_, i) => SAMPLE_ITEMS[i % SAMPLE_ITEMS.length]);
 
-export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "items_table" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
+export const TableEl = React.forwardRef<HTMLDivElement, ElementProps<"items_table">>(({ element, ...domProps }, ref) => {
   const { props } = element;
   const lineBox = Math.ceil(props.fontSize * props.lineHeight);
   const rowHeight = tableRowHeight(props);
@@ -38,7 +37,7 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
   const rowDivider = props.rowDivider ? `${DIVIDER_PX}px dashed ${props.color}40` : null;
 
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
+    <BaseElementWrapper element={element} ref={ref} {...domProps}>
       <table
         style={{
           tableLayout: "fixed",
@@ -81,3 +80,4 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
     </BaseElementWrapper>
   );
 });
+TableEl.displayName = "TableEl";

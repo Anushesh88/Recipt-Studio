@@ -4,16 +4,23 @@ import { useEditorStore } from "../../store/editorStore";
 import { TextEl, ImageEl, TableEl, TotalsEl, QrEl, SignatureEl, DividerEl } from "../elements";
 import { GRID_SIZE, MIN_ELEMENT_SIZE } from "../../lib/units";
 import { floorToGrid, maxGridPosition, snapToGrid } from "../../lib/canvasUtils";
+import { useAssetUrl } from "../../api/assets";
+import { InlineTextEditor } from "./InlineTextEditor";
 
 const ALL_DIRECTIONS = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
-// A divider is only a few px tall, so n/s/corner handles would cover its whole
-// hit area and make it impossible to grab or click. Width is the only useful axis.
-const DIVIDER_DIRECTIONS = ["w", "e"];
+// Width-only handles:
+// - a divider is only a few px tall, so n/s/corner handles would cover its whole
+//   hit area and make it impossible to grab or click;
+// - the items table's height is derived from its rows.
+const WIDTH_ONLY_DIRECTIONS = ["w", "e"];
+const WIDTH_ONLY_TYPES = new Set(["divider", "items_table"]);
 
 export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) => {
   const element = useEditorStore((state) => state.elements.find((e) => e.id === id));
   const isSelected = useEditorStore((state) => state.selectedId === id);
+  const isEditing = useEditorStore((state) => state.editingId === id);
   const selectElement = useEditorStore((state) => state.selectElement);
+  const setEditingId = useEditorStore((state) => state.setEditingId);
   const updateElementGeometry = useEditorStore((state) => state.updateElementGeometry);
   const page = useEditorStore((state) => state.page);
   const zoom = useEditorStore((state) => state.zoom);
@@ -21,6 +28,9 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
   // Hold target in React state so Moveable immediately mounts once DOM node exists
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const moveableRef = useRef<Moveable>(null);
+
+  const assetId = element && (element.type === "image" || element.type === "signature") ? element.props.assetId : null;
+  const assetSrc = useAssetUrl(assetId);
 
   // Synchronize Moveable rect on store updates
   useLayoutEffect(() => {
@@ -36,9 +46,11 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
     selectElement(element.id);
   };
 
+  const ringClass = !isSelected ? "" : element.locked ? "ring-2 ring-amber-500" : "ring-2 ring-blue-500";
   const commonProps = {
     ref: setTarget,
-    className: isSelected ? "ring-2 ring-blue-500" : "",
+    // while editing inline, the textarea overlay stands in for the element
+    className: isEditing ? "invisible" : ringClass,
     onPointerDown: handleSelect,
     onClick: handleSelect,
   };
@@ -46,10 +58,10 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
   let ElNode: React.ReactNode = null;
   switch (element.type) {
     case "text":
-      ElNode = <TextEl element={element} {...commonProps} />;
+      ElNode = <TextEl element={element} {...commonProps} onDoubleClick={() => setEditingId(element.id)} />;
       break;
     case "image":
-      ElNode = <ImageEl element={element} {...commonProps} />;
+      ElNode = <ImageEl element={element} assetSrc={assetSrc} {...commonProps} />;
       break;
     case "items_table":
       ElNode = <TableEl element={element} {...commonProps} />;
@@ -61,7 +73,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
       ElNode = <QrEl element={element} {...commonProps} />;
       break;
     case "signature":
-      ElNode = <SignatureEl element={element} {...commonProps} />;
+      ElNode = <SignatureEl element={element} assetSrc={assetSrc} {...commonProps} />;
       break;
     case "divider":
       ElNode = <DividerEl element={element} {...commonProps} />;
@@ -71,13 +83,14 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
   return (
     <>
       {ElNode}
-      {isSelected && target && (
+      {isEditing && element.type === "text" && <InlineTextEditor element={element} />}
+      {isSelected && target && !isEditing && (
         <Moveable
           key={element.id}
           ref={moveableRef}
           target={target}
-          draggable={true}
-          resizable={true}
+          draggable={!element.locked}
+          resizable={!element.locked}
           snappable={true}
           bounds={{ left: 0, top: 0, right: page.width, bottom: page.height }}
           zoom={zoom}
@@ -85,7 +98,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
           throttleResize={GRID_SIZE}
           keepRatio={false}
           origin={false}
-          renderDirections={element.type === "divider" ? DIVIDER_DIRECTIONS : ALL_DIRECTIONS}
+          renderDirections={WIDTH_ONLY_TYPES.has(element.type) ? WIDTH_ONLY_DIRECTIONS : ALL_DIRECTIONS}
           onDrag={(e) => {
             const [rawDx, rawDy] = e.beforeTranslate;
             const snappedX = snapToGrid(element.x + rawDx, GRID_SIZE);

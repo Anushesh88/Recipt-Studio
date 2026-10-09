@@ -163,13 +163,9 @@ export const Canvas: React.FC = () => {
   };
 
   return (
-    <div
-      ref={containerRef}
-      onPointerDown={handlePointerDownContainer}
-      className="flex-1 bg-gray-100 overflow-auto relative select-none"
-    >
-      {/* Floating Zoom readout and 100% Reset Button */}
-      <div className="fixed top-20 right-6 z-20 bg-white/90 backdrop-blur shadow border border-gray-200 rounded px-2.5 py-1.5 flex items-center gap-2 pointer-events-auto">
+    <div className="relative min-w-0 flex-1">
+      {/* Zoom readout and 100% reset, floating over the top-right of the canvas area */}
+      <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur shadow border border-gray-200 rounded px-2.5 py-1.5 flex items-center gap-2 pointer-events-auto">
         <span className="text-xs font-semibold text-gray-700">{Math.round(zoom * 100)}%</span>
         <button
           onClick={(e) => {
@@ -182,48 +178,54 @@ export const Canvas: React.FC = () => {
         </button>
       </div>
 
-      {/* Spacious scrollable workspace allowing smooth cursor-centered zoom in all directions */}
       <div
-        ref={workspaceRef}
-        style={{
-          width: `${WORKSPACE_SIZE}px`,
-          height: `${WORKSPACE_SIZE}px`,
-          position: "relative",
-        }}
+        ref={containerRef}
+        onPointerDown={handlePointerDownContainer}
+        className="absolute inset-0 bg-gray-100 overflow-auto select-none"
       >
+        {/* Spacious scrollable workspace allowing smooth cursor-centered zoom in all directions */}
         <div
-          ref={contentWrapperRef}
+          ref={workspaceRef}
           style={{
-            position: "absolute",
-            left: `${WORKSPACE_PAGE_ORIGIN}px`,
-            top: `${WORKSPACE_PAGE_ORIGIN}px`,
-            transform: `scale(${zoom})`,
-            transformOrigin: "top left",
+            width: `${WORKSPACE_SIZE}px`,
+            height: `${WORKSPACE_SIZE}px`,
+            position: "relative",
           }}
-          className="shadow-lg"
         >
           <div
-            id="canvas"
-            ref={setRefs}
-            // Outline, not border: a border would eat 2px of the page's exact px size.
-            // No overflow clipping: elements are clamped to the page, and clipping
-            // would cut off Moveable's resize handles on elements touching an edge.
+            ref={contentWrapperRef}
             style={{
-              width: `${page.width}px`,
-              height: `${page.height}px`,
-              backgroundColor: page.background,
-              position: "relative",
+              position: "absolute",
+              left: `${WORKSPACE_PAGE_ORIGIN}px`,
+              top: `${WORKSPACE_PAGE_ORIGIN}px`,
+              transform: `scale(${zoom})`,
+              transformOrigin: "top left",
             }}
-            className="outline outline-gray-200"
+            className="shadow-lg"
           >
-            {page.heightMode === "auto" && (
-              <div className="absolute bottom-0 left-0 w-full bg-blue-100 text-blue-800 text-xs font-bold text-center py-1 border-t-2 border-dashed border-blue-400 pointer-events-none opacity-80 z-50">
-                Auto-Height Mode
-              </div>
-            )}
-            {elementIds ? elementIds.split(",").map((id) => (
-              <CanvasElementNode key={id} id={id} />
-            )) : null}
+            <div
+              id="canvas"
+              ref={setRefs}
+              // Outline, not border: a border would eat 2px of the page's exact px size.
+              // No overflow clipping: elements are clamped to the page, and clipping
+              // would cut off Moveable's resize handles on elements touching an edge.
+              style={{
+                width: `${page.width}px`,
+                height: `${page.height}px`,
+                backgroundColor: page.background,
+                position: "relative",
+              }}
+              className="outline outline-gray-200"
+            >
+              {page.heightMode === "auto" && (
+                <div className="absolute bottom-0 left-0 w-full bg-blue-100 text-blue-800 text-xs font-bold text-center py-1 border-t-2 border-dashed border-blue-400 pointer-events-none opacity-80 z-50">
+                  Auto-Height Mode
+                </div>
+              )}
+              {elementIds ? elementIds.split(",").map((id) => (
+                <CanvasElementNode key={id} id={id} />
+              )) : null}
+            </div>
           </div>
         </div>
       </div>
