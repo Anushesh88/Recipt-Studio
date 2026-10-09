@@ -8,3 +8,8 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 *.db
+
+# Generated build/test output
+*.egg-info/
+frontend/test-results/
+frontend/playwright-report/
