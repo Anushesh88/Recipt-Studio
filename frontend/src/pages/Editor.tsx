@@ -119,8 +119,13 @@ export const Editor: React.FC = () => {
         </div>
 
         {toast && (
-          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white px-4 py-2 rounded shadow-lg z-50">
-            {toast}
+          <div className="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold text-lg px-6 py-4 rounded-lg shadow-2xl z-[100] flex items-center justify-between min-w-[300px] pointer-events-auto animate-bounce border-2 border-red-800">
+            <span>{toast}</span>
+            <button onClick={() => setToast(null)} className="ml-4 text-white hover:text-red-200 focus:outline-none">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
       </div>

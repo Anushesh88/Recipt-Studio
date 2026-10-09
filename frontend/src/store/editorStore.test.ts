@@ -109,4 +109,17 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().elements[0].width).toBe(100);
     expect(useEditorStore.getState().zoom).toBe(2.0);
   });
+
+  it("updateElementGeometry saves exactly one snapshot", () => {
+    const mockElement = getDummyText();
+    useEditorStore.getState().addElement(mockElement);
+    const pastBefore = useEditorStore.getState().past.length;
+    
+    useEditorStore.getState().updateElementGeometry(mockElement.id, { x: 50, y: 50, width: 200, height: 100 });
+    
+    const state = useEditorStore.getState();
+    expect(state.past.length).toBe(pastBefore + 1);
+    expect(state.elements[0].x).toBe(52); // snapped to 4
+    expect(state.elements[0].width).toBe(200);
+  });
 });

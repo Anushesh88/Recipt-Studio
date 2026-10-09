@@ -2,7 +2,7 @@ import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
 
-export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "items_table" }>; className?: string }>(({ element, className }, ref) => {
+export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "items_table" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   const { props } = element;
   
   // Create 3 dummy rows for preview
@@ -13,7 +13,7 @@ export const TableEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
   ];
 
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref}>
+    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
       <table
         style={{
           tableLayout: "fixed",

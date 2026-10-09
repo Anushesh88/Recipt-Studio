@@ -2,10 +2,10 @@ import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
 
-export const SignatureEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "signature" }>; className?: string }>(({ element, className }, ref) => {
+export const SignatureEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "signature" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   const { props } = element;
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref}>
+    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
       <div
         style={{
           width: "100%",

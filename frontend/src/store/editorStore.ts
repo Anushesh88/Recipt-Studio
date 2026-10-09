@@ -22,6 +22,7 @@ interface EditorState {
   updateElement: (id: string, updater: (el: CanvasElement) => void) => void;
   moveElement: (id: string, x: number, y: number) => void;
   resizeElement: (id: string, width: number, height: number) => void;
+  updateElementGeometry: (id: string, geometry: { x?: number, y?: number, width?: number, height?: number }) => void;
   deleteElement: (id: string) => void;
   reorderElement: (id: string, direction: "up" | "down" | "top" | "bottom") => void;
   loadTemplate: (canvas: Canvas) => void;
@@ -115,6 +116,45 @@ export const useEditorStore = create<EditorState>()(
               newHeight = page.height - el.y;
             }
 
+            el.width = snapToGrid(newWidth);
+            el.height = snapToGrid(newHeight);
+          }
+        }),
+
+      updateElementGeometry: (id, geometry) =>
+        set((draft) => {
+          const el = draft.elements.find((e) => e.id === id);
+          if (el) {
+            saveSnapshot(draft);
+            
+            let newWidth = geometry.width !== undefined ? Math.max(8, geometry.width) : el.width;
+            let newHeight = geometry.height !== undefined ? Math.max(8, geometry.height) : el.height;
+            let newX = geometry.x !== undefined ? geometry.x : el.x;
+            let newY = geometry.y !== undefined ? geometry.y : el.y;
+
+            const page = draft.page;
+            
+            // clamp width and x
+            const rightBound = page.width - newWidth;
+            newX = Math.max(0, Math.min(newX, rightBound));
+            
+            if (newX + newWidth > page.width) {
+              newWidth = page.width - newX;
+            }
+
+            // clamp height and y (if fixed)
+            if (page.heightMode === "fixed") {
+              const bottomBound = page.height - newHeight;
+              newY = Math.max(0, Math.min(newY, bottomBound));
+              if (newY + newHeight > page.height) {
+                newHeight = page.height - newY;
+              }
+            } else {
+              newY = Math.max(0, newY);
+            }
+
+            el.x = snapToGrid(newX);
+            el.y = snapToGrid(newY);
             el.width = snapToGrid(newWidth);
             el.height = snapToGrid(newHeight);
           }

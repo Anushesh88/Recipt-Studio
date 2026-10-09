@@ -2,7 +2,7 @@ import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
 
-export const ImageEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "image" }>; className?: string }>(({ element, className }, ref) => {
+export const ImageEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "image" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   // Placeholder for missing asset
   const content = element.props.assetId ? (
     <img
@@ -17,7 +17,7 @@ export const ImageEl = React.forwardRef<HTMLDivElement, { element: Extract<Canva
   );
 
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref}>
+    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
       {content}
     </BaseElementWrapper>
   );

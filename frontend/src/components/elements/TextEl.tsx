@@ -2,9 +2,9 @@ import React from "react";
 import { BaseElementWrapper } from "./BaseElementWrapper";
 import type { CanvasElement } from "../../schema/templateSchema";
 
-export const TextEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "text" }>; className?: string }>(({ element, className }, ref) => {
+export const TextEl = React.forwardRef<HTMLDivElement, { element: Extract<CanvasElement, { type: "text" }>; className?: string; onPointerDown?: React.PointerEventHandler<HTMLDivElement>; onClick?: React.MouseEventHandler<HTMLDivElement>; }>(({ element, className, onPointerDown, onClick }, ref) => {
   return (
-    <BaseElementWrapper element={element} className={className} ref={ref}>
+    <BaseElementWrapper element={element} className={className} ref={ref} onPointerDown={onPointerDown} onClick={onClick}>
       <div
         style={{
           fontFamily: element.props.fontFamily,

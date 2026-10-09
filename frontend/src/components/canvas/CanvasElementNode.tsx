@@ -1,26 +1,33 @@
 import React, { useRef } from "react";
 import Moveable from "react-moveable";
-import type { CanvasElement } from "../../schema/templateSchema";
 import { useEditorStore } from "../../store/editorStore";
 import { TextEl, ImageEl, TableEl, TotalsEl, QrEl, SignatureEl, DividerEl } from "../elements";
 
-export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ element }) => {
-  const selectedId = useEditorStore((state) => state.selectedId);
+export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) => {
+  const element = useEditorStore((state) => state.elements.find((e) => e.id === id));
+  const isSelected = useEditorStore((state) => state.selectedId === id);
   const selectElement = useEditorStore((state) => state.selectElement);
   const moveElement = useEditorStore((state) => state.moveElement);
-  const resizeElement = useEditorStore((state) => state.resizeElement);
+  const updateElementGeometry = useEditorStore((state) => state.updateElementGeometry);
   const zoom = useEditorStore((state) => state.zoom);
   
-  const isSelected = selectedId === element.id;
   const targetRef = useRef<HTMLDivElement>(null);
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    selectElement(element.id);
-  };
+  if (!element) return null;
 
   let ElNode: React.ReactNode = null;
-  const props = { element: element as never, ref: targetRef, className: isSelected ? "ring-2 ring-blue-500" : "" };
+  const props = { 
+    element: element as never, 
+    ref: targetRef, 
+    className: isSelected ? "ring-2 ring-blue-500" : "",
+    onPointerDown: (e: React.PointerEvent) => {
+      e.stopPropagation();
+      selectElement(element.id);
+    },
+    onClick: (e: React.MouseEvent) => {
+      e.stopPropagation();
+    }
+  };
 
   switch (element.type) {
     case "text":
@@ -48,9 +55,7 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
 
   return (
     <>
-      <div onMouseDown={handleClick} onTouchStart={(e) => { e.stopPropagation(); selectElement(element.id); }}>
-        {ElNode}
-      </div>
+      {ElNode}
       {isSelected && (
         <Moveable
           target={targetRef.current}
@@ -91,11 +96,10 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
               dy = parseFloat(match[2]);
             }
             
-            // First resize, then move if needed (to keep logic simple for top/left resize)
-            resizeElement(element.id, width, height);
-            if (dx !== 0 || dy !== 0) {
-               moveElement(element.id, element.x + dx, element.y + dy);
-            }
+            const newX = element.x + dx;
+            const newY = element.y + dy;
+            
+            updateElementGeometry(element.id, { x: newX, y: newY, width, height });
             e.target.style.transform = "none";
           }}
           keepRatio={false}
@@ -107,4 +111,4 @@ export const CanvasElementNode: React.FC<{ element: CanvasElement }> = ({ elemen
       )}
     </>
   );
-};
+});
