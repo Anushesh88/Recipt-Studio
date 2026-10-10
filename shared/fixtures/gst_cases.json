@@ -1,0 +1,155 @@
+{
+  "_comment": "GST tax invoices (CGST rule 46). Run by frontend/tests/sharedFixtures.test.ts (lib/gst.ts) and backend/tests/test_shared_fixtures.py (gst_service). Taxes: within a state CGST + SGST at half the rate each (UTGST in Union territories without a legislature), between states IGST; per line, taxable value = round(qty * unit price) - discount and each tax rounds half-up to the paisa.",
+  "gstin": [
+    { "gstin": "27AAPFU0939F1ZV", "problem": null },
+    { "gstin": "29AAGCB7383J1Z4", "problem": null },
+    { "gstin": "27AAPFU0939F1ZX", "problem": "This GSTIN's last character doesn't match; check it for a typo." },
+    { "gstin": "99AAPFU0939F1ZV", "problem": "99 isn't a GST state code." },
+    { "gstin": "27AAPFU0939F1Z", "problem": "A GSTIN is 15 characters, like 27AAPFU0939F1ZV." },
+    { "gstin": "27aapfu0939f1zv", "problem": "A GSTIN is 15 characters, like 27AAPFU0939F1ZV." }
+  ],
+  "totals": [
+    {
+      "name": "within a state: CGST + SGST at half the rate each",
+      "supplier_state": "27", "place_of_supply": "27",
+      "lines": [{ "qty": "2", "unit_price": "500.00", "discount": "0", "gst_rate": "18" }],
+      "expected": {
+        "supply": "intra", "state_tax_label": "SGST",
+        "lines": [{ "amount": "1000.00", "taxable_value": "1000.00", "cgst": "90.00", "sgst": "90.00", "igst": "0.00" }],
+        "subtotal": "1000.00", "discount": "0.00", "taxable": "1000.00",
+        "cgst": "90.00", "sgst": "90.00", "igst": "0.00", "total": "1180.00"
+      }
+    },
+    {
+      "name": "between states: IGST at the full rate",
+      "supplier_state": "27", "place_of_supply": "29",
+      "lines": [{ "qty": "2", "unit_price": "500.00", "discount": "0", "gst_rate": "18" }],
+      "expected": {
+        "supply": "inter", "state_tax_label": "SGST",
+        "lines": [{ "amount": "1000.00", "taxable_value": "1000.00", "cgst": "0.00", "sgst": "0.00", "igst": "180.00" }],
+        "subtotal": "1000.00", "discount": "0.00", "taxable": "1000.00",
+        "cgst": "0.00", "sgst": "0.00", "igst": "180.00", "total": "1180.00"
+      }
+    },
+    {
+      "name": "each half rounds half-up to the paisa",
+      "supplier_state": "33", "place_of_supply": "33",
+      "lines": [{ "qty": "1", "unit_price": "99.99", "discount": "0", "gst_rate": "5" }],
+      "expected": {
+        "supply": "intra", "state_tax_label": "SGST",
+        "lines": [{ "amount": "99.99", "taxable_value": "99.99", "cgst": "2.50", "sgst": "2.50", "igst": "0.00" }],
+        "subtotal": "99.99", "discount": "0.00", "taxable": "99.99",
+        "cgst": "2.50", "sgst": "2.50", "igst": "0.00", "total": "104.99"
+      }
+    },
+    {
+      "name": "a line discount comes off before tax",
+      "supplier_state": "07", "place_of_supply": "07",
+      "lines": [{ "qty": "3", "unit_price": "100.00", "discount": "50.00", "gst_rate": "18" }],
+      "expected": {
+        "supply": "intra", "state_tax_label": "SGST",
+        "lines": [{ "amount": "300.00", "taxable_value": "250.00", "cgst": "22.50", "sgst": "22.50", "igst": "0.00" }],
+        "subtotal": "300.00", "discount": "50.00", "taxable": "250.00",
+        "cgst": "22.50", "sgst": "22.50", "igst": "0.00", "total": "295.00"
+      }
+    },
+    {
+      "name": "mixed rates are taxed line by line",
+      "supplier_state": "29", "place_of_supply": "29",
+      "lines": [
+        { "qty": "1", "unit_price": "100.00", "discount": "0", "gst_rate": "5" },
+        { "qty": "2", "unit_price": "250.00", "discount": "0", "gst_rate": "18" }
+      ],
+      "expected": {
+        "supply": "intra", "state_tax_label": "SGST",
+        "lines": [
+          { "amount": "100.00", "taxable_value": "100.00", "cgst": "2.50", "sgst": "2.50", "igst": "0.00" },
+          { "amount": "500.00", "taxable_value": "500.00", "cgst": "45.00", "sgst": "45.00", "igst": "0.00" }
+        ],
+        "subtotal": "600.00", "discount": "0.00", "taxable": "600.00",
+        "cgst": "47.50", "sgst": "47.50", "igst": "0.00", "total": "695.00"
+      }
+    },
+    {
+      "name": "a Union territory without a legislature charges UTGST",
+      "supplier_state": "04", "place_of_supply": "04",
+      "lines": [{ "qty": "1", "unit_price": "200.00", "discount": "0", "gst_rate": "18" }],
+      "expected": {
+        "supply": "intra", "state_tax_label": "UTGST",
+        "lines": [{ "amount": "200.00", "taxable_value": "200.00", "cgst": "18.00", "sgst": "18.00", "igst": "0.00" }],
+        "subtotal": "200.00", "discount": "0.00", "taxable": "200.00",
+        "cgst": "18.00", "sgst": "18.00", "igst": "0.00", "total": "236.00"
+      }
+    },
+    {
+      "name": "a nil-rated item has no tax; fractional rates work",
+      "supplier_state": "24", "place_of_supply": "27",
+      "lines": [
+        { "qty": "4", "unit_price": "12.50", "discount": "0", "gst_rate": "0" },
+        { "qty": "1", "unit_price": "1000.00", "discount": "0", "gst_rate": "0.25" }
+      ],
+      "expected": {
+        "supply": "inter", "state_tax_label": "SGST",
+        "lines": [
+          { "amount": "50.00", "taxable_value": "50.00", "cgst": "0.00", "sgst": "0.00", "igst": "0.00" },
+          { "amount": "1000.00", "taxable_value": "1000.00", "cgst": "0.00", "sgst": "0.00", "igst": "2.50" }
+        ],
+        "subtotal": "1050.00", "discount": "0.00", "taxable": "1050.00",
+        "cgst": "0.00", "sgst": "0.00", "igst": "2.50", "total": "1052.50"
+      }
+    },
+    {
+      "name": "a discount above the line amount is an error",
+      "supplier_state": "27", "place_of_supply": "27",
+      "lines": [{ "qty": "1", "unit_price": "10.00", "discount": "10.01", "gst_rate": "18" }],
+      "error": "LINE_DISCOUNT_TOO_LARGE"
+    }
+  ],
+  "financial_year": [
+    { "date": "2026-03-31", "start_year": 2025, "label": "25-26" },
+    { "date": "2026-04-01", "start_year": 2026, "label": "26-27" },
+    { "date": "2099-12-31", "start_year": 2099, "label": "99-00" }
+  ],
+  "invoice_numbers": [
+    { "prefix": "INV/", "start_year": 2026, "seq": 1, "number": "INV/26-27/0001" },
+    { "prefix": "", "start_year": 2026, "seq": 12345, "number": "26-27/12345" }
+  ],
+  "particulars": [
+    {
+      "name": "an empty template lacks everything",
+      "elements": [],
+      "missing": [
+        "Your business name", "Your business address", "Your GSTIN", "Invoice number", "Invoice date",
+        "Customer name", "Customer address", "Customer GSTIN", "Place of supply (state)",
+        "Reverse charge (Yes / No)", "Item description column", "HSN / SAC column",
+        "Quantity (with unit) column", "GST rate column", "Taxable value column", "Taxable value total",
+        "Tax lines (CGST + SGST, or IGST)", "Invoice total", "Signature"
+      ]
+    },
+    {
+      "name": "a compliant template lacks nothing",
+      "elements": [
+        { "type": "text", "props": { "content": "{{business.name}} {{business.address}} GSTIN {{business.gstin}}" } },
+        { "type": "text", "props": { "content": "Invoice {{receipt.number}} dated {{receipt.date}}" } },
+        { "type": "text", "props": { "content": "{{customer.name}} {{customer.address}} {{customer.gstin}} {{receipt.place_of_supply}} RCM {{receipt.reverse_charge}}" } },
+        { "type": "items_table", "props": { "columns": [{ "key": "description" }, { "key": "hsn" }, { "key": "qty" }, { "key": "gst_rate" }, { "key": "taxable_value" }] } },
+        { "type": "totals", "props": { "show": ["taxable", "tax", "total"] } },
+        { "type": "signature", "props": {} }
+      ],
+      "missing": []
+    },
+    {
+      "name": "details only inside a QR code aren't shown; nor is a missing column, totals line or signature",
+      "elements": [
+        { "type": "qr", "props": { "content": "{{business.name}} {{business.address}} {{business.gstin}} {{receipt.number}} {{receipt.date}}" } },
+        { "type": "text", "props": { "content": "{{customer.name}} {{customer.address}} {{customer.gstin}} {{receipt.place_of_supply}} {{receipt.reverse_charge}}" } },
+        { "type": "items_table", "props": { "columns": [{ "key": "description" }, { "key": "qty" }, { "key": "gst_rate" }, { "key": "taxable_value" }] } },
+        { "type": "totals", "props": { "show": ["taxable", "total"] } }
+      ],
+      "missing": [
+        "Your business name", "Your business address", "Your GSTIN", "Invoice number", "Invoice date",
+        "HSN / SAC column", "Tax lines (CGST + SGST, or IGST)", "Signature"
+      ]
+    }
+  ]
+}

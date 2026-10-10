@@ -1,5 +1,6 @@
+import datetime as dt
 import uuid
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,6 +17,7 @@ from app.api.rendering import (
 from app.core.db import get_db
 from app.models.receipt import Receipt
 from app.models.user import User
+from app.schemas.canvas import DocumentType
 from app.schemas.receipt import (
     NextNumberResponse,
     ReceiptCreate,
@@ -45,14 +47,14 @@ def _error(status_code: int, code: str, message: str, fields: list[str]) -> HTTP
 # Declared before /{receipt_id} so "next-number" isn't parsed as an id
 @router.get("/next-number", response_model=NextNumberResponse)
 async def next_number(
-    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    document_type: Annotated[DocumentType, Query()] = "receipt",
+    date: Annotated[dt.date | None, Query(description="GST invoices: the invoice date (default today)")] = None,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> NextNumberResponse:
     """Preview only: does not consume the sequence."""
-    preview = await numbering_service.preview_next_number(db, current_user)
-    mode: Literal["sequential", "nanoid"] = (
-        "nanoid" if current_user.numbering_mode == "nanoid" else "sequential"
-    )
-    return NextNumberResponse(mode=mode, next_number=preview)
+    mode, number = await numbering_service.preview(db, current_user, document_type == "gst_invoice", date)
+    return NextNumberResponse(mode=mode, next_number=number)
 
 
 @router.post("", response_model=ReceiptResponse, status_code=status.HTTP_201_CREATED)
@@ -65,6 +67,10 @@ async def create_receipt(
         return await receipt_service.create_receipt(db, current_user, body)
     except receipt_service.TemplateNotFoundError:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Template not found") from None
+    except receipt_service.ReceiptRuleError as e:
+        raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, e.code, e.message, e.fields) from None
+    except numbering_service.InvoiceNumberInvalidError as e:
+        raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "INVOICE_NUMBER_INVALID", str(e), ["receipt.number"]) from None
     except receipt_service.MissingVariablesError as e:
         raise _error(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

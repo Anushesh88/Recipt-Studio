@@ -7,6 +7,7 @@ import { Editor } from './pages/Editor';
 import { Generate } from './pages/Generate';
 import { History } from './pages/History';
 import { Settings } from './pages/Settings';
+import { Welcome } from './pages/Welcome';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -22,6 +23,7 @@ function App() {
         <Route path="/generate/:templateId" element={requireAuth(<Generate />)} />
         <Route path="/history" element={requireAuth(<History />)} />
         <Route path="/settings" element={requireAuth(<Settings />)} />
+        <Route path="/welcome" element={requireAuth(<Welcome />)} />
         <Route path="*" element={<Navigate to="/templates" />} />
       </Routes>
     </BrowserRouter>

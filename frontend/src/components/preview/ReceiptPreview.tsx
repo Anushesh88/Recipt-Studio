@@ -7,14 +7,17 @@ import { DividerEl, ImageEl, QrEl, SignatureEl, TableEl, TextEl, TotalsEl } from
 import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
 import type { TableRow } from "../elements/TableEl";
 import type { TotalsValues } from "../elements/TotalsEl";
+import type { TaxRow } from "../../lib/elementLayout";
 
 interface ReceiptData {
   values: VariableValues;
   rows: TableRow[];
   totals: TotalsValues;
+  // What the totals' tax line prints as (GST invoices: CGST + SGST, or IGST)
+  taxRows?: TaxRow[];
 }
 
-const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ element, values, rows, totals }) => {
+const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ element, values, rows, totals, taxRows }) => {
   const assetId = element.type === "image" || element.type === "signature" ? element.props.assetId : null;
   const assetSrc = useAssetUrl(assetId);
   switch (element.type) {
@@ -25,7 +28,7 @@ const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ el
     case "items_table":
       return <TableEl element={element} rows={rows} />;
     case "totals":
-      return <TotalsEl element={element} values={totals} />;
+      return <TotalsEl element={element} values={totals} taxRows={taxRows} />;
     case "image":
       return <ImageEl element={element} assetSrc={assetSrc} showPlaceholder={false} />;
     case "signature":
@@ -44,6 +47,7 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
   values,
   rows,
   totals,
+  taxRows,
 }) => {
   const layout = applyLayout(canvas.page, canvas.elements, rows.length);
   const { page } = canvas;
@@ -72,7 +76,7 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
         >
           {layout.elements.map((element) => (
             <ElementErrorBoundary key={element.id} element={element}>
-              <PreviewElement element={element} values={values} rows={rows} totals={totals} />
+              <PreviewElement element={element} values={values} rows={rows} totals={totals} taxRows={taxRows} />
             </ElementErrorBoundary>
           ))}
         </div>

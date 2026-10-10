@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TEMPLATE_NAME_MAX_LENGTH } from "../../lib/units";
+import { useEditorStore } from "../../store/editorStore";
 
 // Template name, save state and the Save / Save as / Generate actions
 export const DocumentBar: React.FC<{
@@ -15,6 +16,7 @@ export const DocumentBar: React.FC<{
   saving: boolean;
   onSave: (asNew?: { name: string }) => void;
 }> = ({ templateId, name, onNameChange, dirty, saving, onSave }) => {
+  const gstInvoice = useEditorStore((state) => state.documentType === "gst_invoice");
   const navigate = useNavigate();
   const nameId = useId();
   const [saveAsOpen, setSaveAsOpen] = useState(false);
@@ -76,7 +78,7 @@ export const DocumentBar: React.FC<{
         onClick={() => templateId && navigate(`/generate/${templateId}`)}
       >
         <ReceiptText />
-        Generate receipt
+        {gstInvoice ? "Generate invoice" : "Generate receipt"}
       </Button>
     </div>
   );

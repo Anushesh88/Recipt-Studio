@@ -4,6 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -36,6 +37,10 @@ class Receipt(Base):
     data: Mapped[dict[str, Any]] = mapped_column(JsonType, nullable=False)
     # Customer-facing number (numbering_service), unique per user
     receipt_number: Mapped[str] = mapped_column(Text, nullable=False)
+    # "receipt", or "gst_invoice" for a GST tax invoice (the template's documentType)
+    document_type: Mapped[str] = mapped_column(
+        Text, nullable=False, default="receipt", server_default="receipt"
+    )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False)
     pdf_path: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -52,4 +57,5 @@ class Receipt(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "receipt_number", name="uq_receipts_user_id_receipt_number"),
         Index("ix_receipts_user_id_created_at", "user_id", "created_at"),
+        CheckConstraint("document_type IN ('receipt', 'gst_invoice')", name="receipts_document_type_check"),
     )

@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
 
-from app.services import qr_service
+from app.services import gst_service, qr_service
 from app.services.variables_service import unknown_variables
 
 MAX_CANVAS_BYTES = 256 * 1024  # serialized template size limit (docs/03-schema.md)
@@ -95,16 +95,24 @@ class ImageElement(BaseElement):
     type: Literal["image"]
     props: ImageProps
 
+# Line-item fields a table column can show (receipts.data items[]). The last
+# five are for GST invoices; "qty" shows the unit too when there is one.
+ItemColumnKey = Literal[
+    "description", "qty", "unit_price", "line_total",
+    "hsn", "discount", "taxable_value", "gst_rate", "tax_amount",
+]
+MAX_COLUMNS = 9
+
+
 class ColumnDef(CanvasModel):
-    # The line-item field the column shows (receipts.data items[])
-    key: Literal["description", "qty", "unit_price", "line_total"]
+    key: ItemColumnKey
     label: Label
     width: float = Field(ge=0, le=1)  # fraction of the table width
     align: Literal["left", "center", "right"]
 
 class ItemsTableProps(CanvasModel):
     binding: Literal["receipt.items"]
-    columns: list[ColumnDef] = Field(min_length=1, max_length=4)
+    columns: list[ColumnDef] = Field(min_length=1, max_length=MAX_COLUMNS)
     fontFamily: FontFamily
     fontSize: FontSize
     lineHeight: LineHeight = 1.3
@@ -123,9 +131,14 @@ class ItemsTableElement(BaseElement):
     type: Literal["items_table"]
     props: ItemsTableProps
 
+# "taxable" = subtotal - discount. On a GST invoice "tax" prints as CGST + SGST
+# (or UTGST) within a state, or IGST between states.
+TotalsLine = Literal["subtotal", "discount", "taxable", "tax", "total"]
+
+
 class TotalsProps(CanvasModel):
     binding: Literal["receipt.totals"]
-    show: list[Literal["subtotal", "tax", "discount", "total"]] = Field(max_length=4)
+    show: list[TotalsLine] = Field(max_length=5)
     fontFamily: FontFamily
     fontSize: FontSize
     emphasizeTotal: bool = True
@@ -203,8 +216,13 @@ class PageConfig(CanvasModel):
             )
         return self
 
+DocumentType = Literal["receipt", "gst_invoice"]
+
+
 class Canvas(CanvasModel):
     schemaVersion: Literal[1] = 1
+    # A plain receipt, or a GST tax invoice that must show rule 46's particulars
+    documentType: DocumentType = "receipt"
     page: PageConfig
     elements: list[CanvasElement] = Field(max_length=MAX_ELEMENTS)
 
@@ -229,6 +247,11 @@ class Canvas(CanvasModel):
                 raise ValueError(f"Element {e.id} extends past the page width.")
             if self.page.heightMode == "fixed" and e.y + e.height > self.page.height:
                 raise ValueError(f"Element {e.id} extends past the page height.")
+
+        if self.documentType == "gst_invoice":
+            missing = gst_service.missing_particulars(e.model_dump() for e in self.elements)
+            if missing:
+                raise ValueError(f"A GST tax invoice must show: {'; '.join(missing)}.")
 
         if len(self.model_dump_json().encode()) > MAX_CANVAS_BYTES:
             raise ValueError(f"Template is larger than {MAX_CANVAS_BYTES // 1024} KB.")

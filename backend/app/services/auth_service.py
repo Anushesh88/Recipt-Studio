@@ -64,6 +64,14 @@ async def update_account(db: AsyncSession, user: User, changes: AccountUpdate) -
         user.receipt_prefix = changes.receipt_prefix
     if "numbering_mode" in sent and changes.numbering_mode is not None:
         user.numbering_mode = changes.numbering_mode
+    if "business_address" in sent:
+        user.business_address = changes.business_address or None
+    if "gstin" in sent:
+        user.gstin = changes.gstin or None
+    if "invoice_prefix" in sent and changes.invoice_prefix is not None:
+        user.invoice_prefix = changes.invoice_prefix
+    if "invoicing_mode" in sent and changes.invoicing_mode is not None:
+        user.invoicing_mode = changes.invoicing_mode
     await db.commit()
     await db.refresh(user)
     return user

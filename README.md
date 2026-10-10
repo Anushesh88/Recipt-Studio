@@ -3,6 +3,12 @@
 Design receipt templates in a drag-and-drop editor, fill them in, and export
 pixel-matched PDFs and PNGs.
 
+Templates are plain receipts or GST tax invoices (CGST rule 46: GSTINs, HSN
+codes, CGST / SGST / IGST, per-financial-year numbering) whose required fields
+can't be deleted by accident. Saved customers and items, "Use again", starter
+templates and Share make repeat invoices quick; see
+[docs/05-gst-and-speed.md](docs/05-gst-and-speed.md).
+
 - `frontend/`: React + Vite app (editor, generate form, history, settings)
 - `backend/`: FastAPI API, numbering, totals, and the WeasyPrint renderer
 - `shared/fixtures/`: layout, variable and totals cases that both test suites run

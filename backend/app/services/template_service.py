@@ -19,6 +19,7 @@ def summarize(template: Template) -> TemplateSummary:
         id=template.id,
         name=template.name,
         preset=str(template.canvas.get("page", {}).get("preset", "")),
+        document_type="gst_invoice" if template.canvas.get("documentType") == "gst_invoice" else "receipt",
         element_count=len(template.canvas.get("elements", [])),
         created_at=template.created_at,
         updated_at=template.updated_at,

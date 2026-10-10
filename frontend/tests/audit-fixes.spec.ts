@@ -24,6 +24,8 @@ async function newAccount(request: APIRequestContext): Promise<Account> {
   const password = `pw-${Math.random().toString(36).slice(2)}`;
   expect((await request.post(`${API}/auth/register`, { data: { email, password } })).status()).toBe(200);
   const { access_token: token } = await (await request.post(`${API}/auth/login`, { form: { username: email, password } })).json();
+  // Past the one-time welcome question
+  await request.patch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, data: { invoicing_mode: 'both' } });
   return { email, password, token };
 }
 

@@ -1,6 +1,6 @@
 # IMPLEMENTATION PLAN (5 phases, one agent session each)
 
-Status: all five phases are implemented; each phase's "Done when" is covered
+Status: all seven phases are implemented; each phase's "Done when" is covered
 by tests (backend pytest, frontend Vitest, Playwright specs in frontend/tests).
 
 Rule for every phase: follow ARCHITECTURE & RULES strictly. Finish with working
@@ -82,3 +82,24 @@ code, passing lint/tests, and a short list of what was done.
 - Error/loading states, basic rate limiting on exports.
 - Done when: exported PDF matches the editor preview for all 7 types, and the
   thermal receipt height tracks item count.
+## Phase 6: GST Tax Invoices (05-gst-and-speed.md)
+- Template documentType (receipt | gst_invoice); rule 46 particulars checked
+  on save (gst_service.missing_particulars / lib/gst.ts, shared fixtures).
+- Editor: document type picker, live checklist, "Add missing fields", required
+  elements / columns / totals lines can't be deleted.
+- Settings: GSTIN (checked), business address, invoice prefix.
+- POST /receipts for GST invoices: per-item rates and discounts, CGST + SGST /
+  UTGST / IGST by place of supply, buyer-detail rules (registered, Rs 50,000),
+  per-financial-year invoice series (invoice_series), INR.
+- PDF: CGST / SGST or IGST totals rows, HSN / rate / taxable columns.
+- Done when: a compliant template saves and a non-compliant one is refused; an
+  intra-state invoice shows CGST + SGST and an inter-state one IGST, matching
+  the preview within 1px; B2B and Rs 50,000 rules refuse with field errors;
+  numbering restarts each April.
+
+## Phase 7: Speed Features
+- Saved customers and items (remembered on every receipt; autofill; manage in
+  Settings), "Use again" from History, starter templates, Share (Web Share API).
+- Done when: typing a saved customer / item fills its details; Use again
+  pre-fills a new receipt; a starter template opens ready to generate; Share
+  hands the PDF to the share sheet.

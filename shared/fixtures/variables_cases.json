@@ -2,6 +2,11 @@
   "_comment": "Variable placeholder cases. Run by frontend/tests/sharedFixtures.test.ts (lib/variables.ts) and backend/tests/test_shared_fixtures.py (variables_service).",
   "find": [
     {
+      "text": "GSTIN {{business.gstin}} bills {{customer.gstin}} at {{ receipt.place_of_supply }} (RCM {{receipt.reverse_charge}}) from {{business.address}} to {{customer.address}}",
+      "variables": ["business.gstin", "customer.gstin", "receipt.place_of_supply", "receipt.reverse_charge", "business.address", "customer.address"],
+      "unknown": []
+    },
+    {
       "text": "Hi {{customer.name}}, receipt #{{ receipt.number }}",
       "variables": ["customer.name", "receipt.number"],
       "unknown": []

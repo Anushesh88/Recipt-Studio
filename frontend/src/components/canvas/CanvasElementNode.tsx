@@ -7,6 +7,7 @@ import { floorToGrid, maxGridPosition, snapToGrid } from "../../lib/canvasUtils"
 import { useAssetUrl } from "../../api/assets";
 import { InlineTextEditor } from "./InlineTextEditor";
 import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
+import { SAMPLE_GST_TAX_ROWS } from "../../lib/gstTemplate";
 
 const ALL_DIRECTIONS = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
 // Width-only handles:
@@ -25,6 +26,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
   const updateElementGeometry = useEditorStore((state) => state.updateElementGeometry);
   const page = useEditorStore((state) => state.page);
   const zoom = useEditorStore((state) => state.zoom);
+  const gstInvoice = useEditorStore((state) => state.documentType === "gst_invoice");
 
   // Hold target in React state so Moveable immediately mounts once DOM node exists
   const [target, setTarget] = useState<HTMLElement | null>(null);
@@ -68,7 +70,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
       ElNode = <TableEl element={element} {...commonProps} />;
       break;
     case "totals":
-      ElNode = <TotalsEl element={element} {...commonProps} />;
+      ElNode = <TotalsEl element={element} taxRows={gstInvoice ? SAMPLE_GST_TAX_ROWS : undefined} {...commonProps} />;
       break;
     case "qr":
       ElNode = <QrEl element={element} {...commonProps} />;

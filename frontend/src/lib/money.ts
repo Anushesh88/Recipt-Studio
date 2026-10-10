@@ -10,7 +10,7 @@ import { MAX_AMOUNT, MONEY_DECIMAL_PLACES as CENT_SCALE } from "./units";
 
 const DECIMAL = /^\d+(\.\d+)?$/;
 
-interface Scaled {
+export interface Scaled {
   units: bigint;
   scale: number;
 }
@@ -24,10 +24,10 @@ export function parseDecimal(text: string): Scaled | null {
   return { units: BigInt(whole + fraction), scale: fraction.length };
 }
 
-const multiply = (a: Scaled, b: Scaled): Scaled => ({ units: a.units * b.units, scale: a.scale + b.scale });
+export const multiply = (a: Scaled, b: Scaled): Scaled => ({ units: a.units * b.units, scale: a.scale + b.scale });
 
 // Non-negative value rounded half-up to whole cents
-function toCents({ units, scale }: Scaled): bigint {
+export function toCents({ units, scale }: Scaled): bigint {
   if (scale <= CENT_SCALE) return units * pow10(CENT_SCALE - scale);
   const divisor = pow10(scale - CENT_SCALE);
   return (units + divisor / 2n) / divisor;
@@ -89,4 +89,13 @@ export function computeTotals(items: MoneyLine[], taxRate: string, discount: str
       total: formatCents(taxable + tax),
     },
   };
+}
+
+// "0.0825" (a fraction) -> "8.25" (%), for showing a stored tax rate in the form
+export function fractionToPercent(fraction: string): string {
+  const parsed = parseDecimal(fraction);
+  if (!parsed) return "0";
+  const scale = Math.max(0, parsed.scale - 2);
+  const text = formatScaled(parsed.units * (parsed.scale < 2 ? 10n ** BigInt(2 - parsed.scale) : 1n), scale);
+  return text.includes(".") ? text.replace(/0+$/, "").replace(/\.$/, "") : text;
 }

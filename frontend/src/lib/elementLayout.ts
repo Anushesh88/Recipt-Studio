@@ -8,29 +8,45 @@ import {
   SIGNATURE_LABEL_HEIGHT,
   SIGNATURE_LINE_THICKNESS,
   TOTALS_EMPHASIS_SCALE,
+  TOTALS_FIELDS,
   TOTALS_LINE_HEIGHT,
   TOTALS_ROW_GAP,
+  type TotalsLine,
 } from "./units";
 
 type TotalsProps = Extract<CanvasElement, { type: "totals" }>["props"];
-type TotalsLine = TotalsProps["show"][number];
+
+// What the "tax" line prints as: one Tax row on a receipt; on a GST invoice
+// CGST + SGST (or UTGST) within a state, IGST between states
+export interface TaxRow {
+  key: string; // into the totals values: tax, cgst, sgst, igst
+  label: string;
+}
+export const DEFAULT_TAX_ROWS: TaxRow[] = [{ key: "tax", label: "Tax" }];
+
+const LABELS = Object.fromEntries(TOTALS_FIELDS.map((f) => [f.key, f.label])) as Record<TotalsLine, string>;
 
 export interface TotalsRow {
   line: TotalsLine;
+  key: string;
+  label: string;
   top: number;
   height: number;
   fontSize: number;
   bold: boolean;
 }
 
-// One row per shown line, stacked from the top with a fixed gap
-export function totalsRows(props: TotalsProps): TotalsRow[] {
+// One row per printed line, stacked from the top with a fixed gap
+export function totalsRows(props: TotalsProps, taxRows: TaxRow[] = DEFAULT_TAX_ROWS): TotalsRow[] {
+  const printed = props.show.flatMap((line): { line: TotalsLine; key: string; label: string }[] =>
+    line === "tax" ? taxRows.map((t) => ({ line, ...t })) : [{ line, key: line, label: LABELS[line] }],
+  );
   let top = 0;
-  return props.show.map((line) => {
+  return printed.map(({ line, key, label }) => {
     const emphasized = line === "total" && props.emphasizeTotal;
     const fontSize = emphasized ? props.fontSize * TOTALS_EMPHASIS_SCALE : props.fontSize;
     const height = Math.ceil(fontSize * TOTALS_LINE_HEIGHT);
-    const row = { line, top, height, fontSize, bold: emphasized };
+    const row = { line, key, label, top, height, fontSize, bold: emphasized };
     top += height + TOTALS_ROW_GAP;
     return row;
   });

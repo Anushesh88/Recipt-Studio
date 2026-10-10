@@ -64,19 +64,34 @@ export const ELEMENT_LABELS: Record<CanvasElement["type"], string> = {
 };
 
 // Line-item fields an items_table column can show (receipts.data items[])
+// (backend ItemColumnKey). The `gst` ones are for GST invoices; "qty" shows the
+// unit too when there is one.
 export const ITEM_COLUMN_KEYS = [
-  { key: "description", label: "Item" },
-  { key: "qty", label: "Qty" },
-  { key: "unit_price", label: "Price" },
-  { key: "line_total", label: "Total" },
+  { key: "description", label: "Item", gst: false },
+  { key: "qty", label: "Qty", gst: false },
+  { key: "unit_price", label: "Price", gst: false },
+  { key: "line_total", label: "Total", gst: false },
+  { key: "hsn", label: "HSN/SAC", gst: true },
+  { key: "discount", label: "Disc.", gst: true },
+  { key: "taxable_value", label: "Taxable", gst: true },
+  { key: "gst_rate", label: "GST", gst: true },
+  { key: "tax_amount", label: "Tax", gst: true },
 ] as const;
 
+// In the order they print. "taxable" = subtotal - discount; on a GST invoice
+// "tax" prints as CGST + SGST (or UTGST) within a state, or IGST between states.
 export const TOTALS_FIELDS = [
   { key: "subtotal", label: "Subtotal" },
-  { key: "tax", label: "Tax" },
   { key: "discount", label: "Discount" },
+  { key: "taxable", label: "Taxable value" },
+  { key: "tax", label: "Tax" },
   { key: "total", label: "Total" },
 ] as const;
+export type TotalsLine = (typeof TOTALS_FIELDS)[number]["key"];
+
+// A plain receipt, or a GST tax invoice (lib/gst.ts)
+export const DOCUMENT_TYPE_LABELS = { receipt: "Receipt", gst_invoice: "GST tax invoice" } as const;
+export type DocumentType = keyof typeof DOCUMENT_TYPE_LABELS;
 
 // --- Limits (mirrored by the backend schemas) ---------------------------------
 // Template limits: backend app/schemas/canvas.py
@@ -161,7 +176,7 @@ export const PAGE_PRESETS: Record<PagePreset, z.infer<typeof pageConfigSchema>> 
 
 export const DEFAULT_PAGE = PAGE_PRESETS.thermal80;
 
-export const BLANK_CANVAS: Canvas = { schemaVersion: 1, page: DEFAULT_PAGE, elements: [] };
+export const BLANK_CANVAS: Canvas = { schemaVersion: 1, documentType: "receipt", page: DEFAULT_PAGE, elements: [] };
 export const UNTITLED_TEMPLATE = "Untitled receipt";
 
 export const PAGE_PRESET_LABELS: Record<PagePreset, string> = {

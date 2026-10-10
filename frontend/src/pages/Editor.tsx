@@ -20,13 +20,13 @@ import { DocumentBar } from "../components/editor/DocumentBar";
 import { useTemplatePersistence } from "../components/editor/useTemplatePersistence";
 import { useEditorStore } from "../store/editorStore";
 import { useTemplate } from "../api/templates";
+import { completeForGst } from "../lib/gstTemplate";
 import { apiErrorMessage } from "../api/client";
 import {
   BLANK_CANVAS,
   DEFAULT_ELEMENTS,
   DRAG_ACTIVATION_DISTANCE_PX,
   GRID_SIZE,
-  TOAST_DURATION_MS,
   TOUCH_ACTIVATION_DELAY_MS,
   TOUCH_ACTIVATION_TOLERANCE_PX,
   UNTITLED_TEMPLATE,
@@ -80,6 +80,8 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
   const deleteElement = useEditorStore((state) => state.deleteElement);
   const selectedId = useEditorStore((state) => state.selectedId);
   const reorderElement = useEditorStore((state) => state.reorderElement);
+  const toast = useEditorStore((state) => state.notice);
+  const setToast = useEditorStore((state) => state.showNotice);
 
   const persistence = useTemplatePersistence({ templateId, workspaceKey, initialName, initialCanvas });
   const { save, dirty } = persistence;
@@ -92,7 +94,6 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
     loadTemplate(initialCanvas);
   }, [initialCanvas, loadTemplate]);
 
-  const [toast, setToast] = useState<string | null>(null);
   const [draggingType, setDraggingType] = useState<CanvasElement["type"] | null>(null);
   // Live pointer position during a palette drag. DragEndEvent.delta can't be used:
   // dnd-kit folds the canvas scroll container's offsets into it, which threw drops
@@ -136,12 +137,10 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
 
     if (type === "items_table" && elements.some((el) => el.type === "items_table")) {
       setToast("Only one items table is allowed.");
-      setTimeout(() => setToast(null), TOAST_DURATION_MS);
       return;
     }
     if (type === "totals" && elements.some((el) => el.type === "totals")) {
       setToast("Only one totals element is allowed.");
-      setTimeout(() => setToast(null), TOAST_DURATION_MS);
       return;
     }
 
@@ -289,7 +288,7 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
         </div>
 
         {toast && (
-          <div className="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-bold text-lg px-6 py-4 rounded-lg shadow-2xl z-[100] flex items-center justify-between min-w-[300px] pointer-events-auto animate-bounce border-2 border-red-800">
+          <div role="alert" className="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-semibold px-6 py-4 rounded-lg shadow-2xl z-[100] flex items-center justify-between gap-4 max-w-[min(36rem,calc(100vw-2rem))] pointer-events-auto border-2 border-red-800">
             <span>{toast}</span>
             <button onClick={() => setToast(null)} className="ml-4 text-white hover:text-red-200 focus:outline-none">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -320,13 +319,22 @@ const EditorMessage: React.FC<{ title: string; detail?: React.ReactNode }> = ({ 
 export const Editor: React.FC = () => {
   const { id } = useParams();
   const location = useLocation();
-  const workspaceKey = (location.state as { workspaceKey?: string } | null)?.workspaceKey ?? id ?? "new";
+  const state = location.state as { workspaceKey?: string; documentType?: CanvasDocument["documentType"] } | null;
+  const workspaceKey = state?.workspaceKey ?? id ?? "new";
   const query = useTemplate(id);
   const parsed = useMemo(() => (query.data ? canvasSchema.safeParse(query.data.canvas) : null), [query.data]);
+  // "New blank GST invoice" (Templates, for GST users) starts with the required fields in place
+  const blankType = state?.documentType;
+  const blank = useMemo<CanvasDocument>(
+    () => blankType === "gst_invoice"
+      ? { ...BLANK_CANVAS, documentType: "gst_invoice", elements: completeForGst(BLANK_CANVAS) }
+      : BLANK_CANVAS,
+    [blankType],
+  );
 
   if (!id) {
     return (
-      <EditorWorkspace key={workspaceKey} templateId={undefined} workspaceKey={workspaceKey} initialName={UNTITLED_TEMPLATE} initialCanvas={BLANK_CANVAS} />
+      <EditorWorkspace key={workspaceKey} templateId={undefined} workspaceKey={workspaceKey} initialName={UNTITLED_TEMPLATE} initialCanvas={blank} />
     );
   }
   // Once there's data, keep showing it even if a background refetch fails

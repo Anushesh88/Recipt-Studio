@@ -22,6 +22,14 @@ export const BUILTIN_VARIABLES: readonly BuiltinVariable[] = [
   { key: "receipt.payment_method", label: "Payment method", sample: "Card" },
   { key: "receipt.currency", label: "Currency", sample: "USD" },
   { key: "receipt.notes", label: "Notes", sample: "Thank you!" },
+  // GST tax invoices (also usable on receipts). The business address and GSTIN
+  // come from Settings; the rest from the Generate form.
+  { key: "business.address", label: "Business address", sample: "12 MG Road, Pune 411001" },
+  { key: "business.gstin", label: "Business GSTIN", sample: "27AAPFU0939F1ZV" },
+  { key: "customer.address", label: "Customer address", sample: "4 Brigade Road, Bengaluru" },
+  { key: "customer.gstin", label: "Customer GSTIN", sample: "29AAGCB7383J1Z4" },
+  { key: "receipt.place_of_supply", label: "Place of supply", sample: "Maharashtra (27)" },
+  { key: "receipt.reverse_charge", label: "Reverse charge", sample: "No" },
 ];
 
 const BUILTIN_KEYS = new Set(BUILTIN_VARIABLES.map((v) => v.key));

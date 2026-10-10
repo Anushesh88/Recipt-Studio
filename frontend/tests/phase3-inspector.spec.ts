@@ -98,7 +98,7 @@ test.describe('Phase 3 inspector', () => {
     await page.locator('[data-variable-menu]').getByPlaceholder('table_no').fill('Table 1');
     await expect(page.locator('[data-variable-menu]')).toContainText('lowercase letters and underscores');
     await page.locator('[data-variable-menu]').getByPlaceholder('table_no').fill('table_no');
-    await page.locator('[data-variable-menu]').getByRole('button', { name: 'Add' }).click();
+    await page.locator('[data-variable-menu]').getByRole('button', { name: 'Add', exact: true }).click();
     await expect(editor).toHaveValue('Thanks {{customer.name}}, table {{custom.table_no}}');
 
     await editor.press('Escape');
@@ -125,7 +125,7 @@ test.describe('Phase 3 inspector', () => {
     await expect(page.locator('[data-type="items_table"] th')).toHaveCount(4);
 
     await drop(page, 'Totals', 120, 150);
-    await page.getByRole('checkbox', { name: 'Tax' }).click();
+    await page.getByRole('checkbox', { name: 'Tax', exact: true }).click();
     const totals = page.locator('[data-type="totals"]');
     await expect(totals).not.toContainText('Tax');
     await page.getByLabel('Currency symbol').fill('€');

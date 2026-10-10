@@ -18,9 +18,11 @@ import {
   PAGE_SIZES,
   ROW_PADDING_RANGE,
   TOTALS_FIELDS,
+  type TotalsLine,
 } from "../lib/units";
 import { findUnknownVariables } from "../lib/variables";
 import { qrFits, qrTooLongMessage } from "../lib/qr";
+import { missingParticulars } from "../lib/gst";
 
 // Mirrors backend app/schemas/canvas.py, limits included: anything the editor
 // can't produce is rejected (Architecture backend rule 2). z.number() already
@@ -118,7 +120,7 @@ export const itemsTableElementSchema = baseElement.extend({
 const totalsProps = z.object({
   binding: z.literal("receipt.totals"),
   show: z
-    .array(z.enum(TOTALS_FIELDS.map((f) => f.key) as ["subtotal", "tax", "discount", "total"]))
+    .array(z.enum(TOTALS_FIELDS.map((f) => f.key) as [TotalsLine, ...TotalsLine[]]))
     .max(TOTALS_FIELDS.length)
     .refine(unique, "Each totals line can only be shown once"),
   fontFamily,
@@ -210,6 +212,8 @@ export const pageConfigSchema = z
 // Mirrors Canvas.validate_canvas in backend/app/schemas/canvas.py
 export const canvasSchema = z.object({
   schemaVersion: z.literal(1).default(1),
+  // A plain receipt, or a GST tax invoice that must show rule 46's particulars
+  documentType: z.enum(["receipt", "gst_invoice"]).default("receipt"),
   page: pageConfigSchema,
   elements: z.array(canvasElementSchema).max(MAX_ELEMENTS),
 }).superRefine((data, ctx) => {
@@ -237,6 +241,13 @@ export const canvasSchema = z.object({
       ctx.addIssue({ code: "custom", message: `Element ${e.id} extends past the page height`, path: ["elements", i] });
     }
   });
+
+  if (data.documentType === "gst_invoice") {
+    const missing = missingParticulars(data.elements);
+    if (missing.length > 0) {
+      ctx.addIssue({ code: "custom", message: `A GST tax invoice must show: ${missing.join("; ")}`, path: ["documentType"] });
+    }
+  }
 
   if (new TextEncoder().encode(JSON.stringify(data)).length > MAX_CANVAS_BYTES) {
     ctx.addIssue({ code: "custom", message: `Template is larger than ${MAX_CANVAS_BYTES / 1024} KB`, path: [] });

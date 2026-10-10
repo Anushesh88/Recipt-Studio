@@ -255,6 +255,7 @@ describe("editorStore", () => {
   it("loading a template with an element below its thermal page grows the page", () => {
     useEditorStore.getState().loadTemplate({
       schemaVersion: 1,
+      documentType: "receipt",
       page: PAGE_PRESETS.thermal80,
       elements: [{ ...getDummyText(), y: 1000 }],
     });

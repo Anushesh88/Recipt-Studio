@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './client';
 import type { Canvas } from '../schema/templateSchema';
-import type { PagePreset } from '../lib/units';
+import type { DocumentType, PagePreset } from '../lib/units';
 
 export interface TemplateSummary {
   id: string;
   name: string;
   preset: PagePreset;
+  document_type: DocumentType;
   element_count: number;
   created_at: string | null;
   updated_at: string | null;

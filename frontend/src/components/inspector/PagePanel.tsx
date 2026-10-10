@@ -1,14 +1,22 @@
 import React from "react";
 import { useEditorStore } from "../../store/editorStore";
 import {
+  DOCUMENT_TYPE_LABELS,
   GRID_SIZE,
   MAX_DESIGN_HEIGHT,
   MIN_DESIGN_HEIGHT,
   PAGE_PRESET_LABELS,
   PAGE_PRESETS,
+  type DocumentType,
   type PagePreset,
 } from "../../lib/units";
 import { ColorField, Field, NumberField, Section, SelectField } from "./fields";
+import { GstChecklist } from "./GstChecklist";
+
+const DOCUMENT_OPTIONS = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map((value) => ({
+  value,
+  label: DOCUMENT_TYPE_LABELS[value],
+}));
 
 const PRESET_OPTIONS = (Object.keys(PAGE_PRESETS) as PagePreset[]).map((preset) => ({
   value: preset,
@@ -20,9 +28,24 @@ export const PagePanel: React.FC = () => {
   const page = useEditorStore((s) => s.page);
   const setPagePreset = useEditorStore((s) => s.setPagePreset);
   const updatePage = useEditorStore((s) => s.updatePage);
+  const documentType = useEditorStore((s) => s.documentType);
+  const setDocumentType = useEditorStore((s) => s.setDocumentType);
 
   return (
     <>
+      <Section title="Document">
+        <SelectField
+          id="document-type"
+          label="Type"
+          value={documentType}
+          options={DOCUMENT_OPTIONS}
+          onChange={setDocumentType}
+          hint={documentType === "receipt"
+            ? "A plain receipt. Pick GST tax invoice if you're GST-registered and need rule 46's details."
+            : undefined}
+        />
+        {documentType === "gst_invoice" && <GstChecklist />}
+      </Section>
       <Section title="Page">
         <SelectField
           id="page-preset"

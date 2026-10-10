@@ -62,19 +62,27 @@ rigid invoicing tool or a full design suite.
 - Reloaded template is identical to when saved.
 - Exported PDF matches the editor preview (positions within 1px).
 
+## GST tax invoices and speed features (Phases 6-7)
+See 05-gst-and-speed.md. A template is either a plain receipt or a GST tax
+invoice (CGST rule 46, turnover up to Rs 5 crore) whose required fields can't
+be removed by accident. Saved customers and items, "Use again", starter
+templates and sharing via the phone's share sheet make repeat invoices quick.
+
 ## Out of Scope (V1)
 - Element rotation (removed entirely)
 - Real-time collaboration / multi-user editing
 - Payment processing or gateway integration
-- Emailing/sharing receipts (email, WhatsApp, SMS)
+- Sending receipts from the server (email, WhatsApp, SMS); the Share button
+  only hands the PDF to the device's share sheet
 - Public receipt verification page / verify URLs
-- Invoices, quotes, recurring billing, accounting features
+- Quotes, recurring billing, accounting features; GST e-invoicing (IRN),
+  bills of supply, cess, credit / debit notes
 - Template marketplace or pre-made templates imitating real brands
 - Multi-page receipts
 - Persistent undo history (in-session undo/redo only)
 - Custom font upload (curated list of 8 fonts only)
 - Text auto-grow / multi-line wrapping inside table cells (cells are single-line)
 - Mobile-optimized editor (desktop-first; generate form responsive)
-- Currency conversion, tax-law compliance, localization
+- Currency conversion, localization, tax compliance beyond GST rule 46
 - Teams/roles, API keys, webhooks
 - SVG uploads, gradients, filters, freehand drawing

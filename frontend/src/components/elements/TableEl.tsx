@@ -5,11 +5,11 @@ import { withAlpha } from "../../lib/elementLayout";
 import { tableRowHeight } from "../../lib/layout";
 
 // Placeholder line items shown in the editor (real items come from the Generate form).
-// They sum to the TotalsEl placeholder subtotal of 35.00.
+// They sum to the TotalsEl placeholder subtotal of 35.00 (5% GST on GST invoices).
 const SAMPLE_ITEMS: Record<string, string>[] = [
-  { description: "Item 1", qty: "1", unit_price: "10.00", line_total: "10.00" },
-  { description: "Item 2", qty: "2", unit_price: "5.00", line_total: "10.00" },
-  { description: "Item 3", qty: "1", unit_price: "15.00", line_total: "15.00" },
+  { description: "Item 1", qty: "1 NOS", unit_price: "10.00", line_total: "10.00", hsn: "1006", taxable_value: "10.00", gst_rate: "5%", tax_amount: "0.50" },
+  { description: "Item 2", qty: "2 NOS", unit_price: "5.00", line_total: "10.00", hsn: "0902", taxable_value: "10.00", gst_rate: "5%", tax_amount: "0.50" },
+  { description: "Item 3", qty: "1 KGS", unit_price: "15.00", line_total: "15.00", hsn: "1701", taxable_value: "15.00", gst_rate: "5%", tax_amount: "0.76" },
 ];
 const SAMPLE_ROWS = Array.from({ length: ITEMS_TABLE_SAMPLE_ROWS }, (_, i) => SAMPLE_ITEMS[i % SAMPLE_ITEMS.length]);
 

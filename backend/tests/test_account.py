@@ -74,3 +74,12 @@ async def test_settings_are_per_user(client: AsyncClient, login: Login) -> None:
 
 async def test_health_has_a_response_model(client: AsyncClient) -> None:
     assert (await client.get("/health")).json() == {"status": "ok"}
+
+
+async def test_invoicing_mode_is_asked_once_and_can_change(client: AsyncClient, login: Login) -> None:
+    headers = await login("owner@example.com")
+    assert (await client.get("/auth/me", headers=headers)).json()["invoicing_mode"] is None  # not asked yet
+    for mode in ("gst", "both", "receipts"):
+        saved = await client.patch("/auth/me", headers=headers, json={"invoicing_mode": mode})
+        assert saved.json()["invoicing_mode"] == mode
+    assert (await client.patch("/auth/me", headers=headers, json={"invoicing_mode": "invoices"})).status_code == 422

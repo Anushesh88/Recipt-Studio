@@ -15,8 +15,8 @@ export interface SaveProblem {
 }
 
 const currentCanvas = (): Canvas => {
-  const { page, elements } = useEditorStore.getState();
-  return { schemaVersion: 1, page, elements };
+  const { documentType, page, elements } = useEditorStore.getState();
+  return { schemaVersion: 1, documentType, page, elements };
 };
 
 // Save / Save As for the template open in the editor, plus "unsaved changes".
@@ -44,11 +44,12 @@ export function useTemplatePersistence({
   const savingRef = useRef(false);
   const [problem, setProblem] = useState<SaveProblem | null>(null);
 
+  const documentType = useEditorStore((s) => s.documentType);
   const page = useEditorStore((s) => s.page);
   const elements = useEditorStore((s) => s.elements);
   const canvasDirty = useMemo(
-    () => stableStringify({ schemaVersion: 1, page, elements }) !== savedSnapshot,
-    [page, elements, savedSnapshot],
+    () => stableStringify({ schemaVersion: 1, documentType, page, elements }) !== savedSnapshot,
+    [documentType, page, elements, savedSnapshot],
   );
   const dirty = canvasDirty || name.trim() !== savedName;
 

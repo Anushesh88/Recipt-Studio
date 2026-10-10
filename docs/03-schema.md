@@ -3,6 +3,7 @@
 ## Saved Template JSON (`templates.canvas`)
 {
   "schemaVersion": 1,
+  "documentType": "receipt",        // receipt | gst_invoice (05-gst-and-speed.md)
   "page": {
     "preset": "thermal80",        // thermal80 | a5 | a4
     "width": 302,                 // px @96dpi (80mm ~ 302px)
@@ -92,6 +93,12 @@ text | image | items_table | totals | qr | signature | divider
 Pattern: {{namespace.key}}   regex: \{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}
 Built-in: business.name, customer.name, customer.email, receipt.number,
           receipt.date, receipt.payment_method, receipt.currency, receipt.notes
+GST:      business.address, business.gstin (from Settings), customer.address,
+          customer.gstin, receipt.place_of_supply, receipt.reverse_charge
+Table columns: description, qty (+ unit), unit_price, line_total; GST invoices
+          also hsn, discount, taxable_value, gst_rate, tax_amount
+Totals lines: subtotal, discount, taxable, tax, total ("tax" prints CGST + SGST
+          or IGST on GST invoices)
 Custom:   custom.<key>  (a-z and underscore; the regex above does not match digits)
 Allowed in: text.props.content, qr.props.content only.
 
@@ -148,6 +155,10 @@ Both implementations must pass shared/fixtures/layout_cases.json.
   "tax_rate": "0.08",
   "discount": "0.00"
 }
+GST invoices add customer.address / gstin, receipt.place_of_supply (state code)
+and reverse_charge, and per item hsn, unit, discount and gst_rate (percent);
+tax_rate and discount stay 0. Stored items also get taxable_value and
+tax_amount, and computed.gst = {supply, state_tax_label, taxable, cgst, sgst, igst}.
 
 Server adds on save (client values ignored):
   "items[].line_total", and
@@ -166,6 +177,11 @@ users
   numbering_mode     TEXT NOT NULL DEFAULT 'sequential'
                      CHECK (numbering_mode IN ('sequential','nanoid'))
   receipt_next_seq   INT NOT NULL DEFAULT 1
+  business_address   TEXT                       -- GST invoices
+  gstin              TEXT
+  invoice_prefix     TEXT NOT NULL DEFAULT 'INV/'
+  invoicing_mode     TEXT NULL CHECK (invoicing_mode IN ('receipts','gst','both'))
+                     -- asked once after sign-up; NULL = not asked yet
   created_at         TIMESTAMPTZ DEFAULT now()
 
 assets
@@ -195,12 +211,24 @@ receipts
   template_snapshot  JSONB NOT NULL     -- canvas copy at generation time
   data               JSONB NOT NULL
   receipt_number     TEXT NOT NULL      -- customer-facing
+  document_type      TEXT NOT NULL DEFAULT 'receipt'
+                     CHECK (document_type IN ('receipt','gst_invoice'))
   total_amount       NUMERIC(12,2) NOT NULL
   currency           CHAR(3) NOT NULL
   pdf_path           TEXT NULL
   created_at         TIMESTAMPTZ DEFAULT now()
   UNIQUE (user_id, receipt_number)
   INDEX (user_id, created_at DESC)
+
+invoice_series     -- GST invoice numbering, one series per financial year
+  user_id UUID FK, financial_year INT (start year), next_seq INT
+  PRIMARY KEY (user_id, financial_year)
+
+customers / catalog_items   -- remembered from receipts, for autofill
+  customers: user_id, name, name_key (lower), email, gstin, address, state_code
+  catalog_items: user_id, description, description_key, hsn, unit,
+                 unit_price NUMERIC(12,2), gst_rate NUMERIC(5,2)
+  UNIQUE (user_id, name_key) / (user_id, description_key)
 
 ## Key API Endpoints
 POST   /auth/register, /auth/login   (passwords: at least 8 characters, at most
@@ -210,7 +238,9 @@ GET    /auth/me            PATCH /auth/me   (business name, receipt prefix,
 GET    /templates          POST /templates
 GET    /templates/{id}     PUT  /templates/{id}     DELETE /templates/{id}
 POST   /assets             (multipart)     GET /assets/{id} (the owner's file)
-GET    /receipts/next-number    (preview only; does not consume the sequence)
+GET    /receipts/next-number    (preview only; does not consume the sequence;
+                                ?document_type=gst_invoice&date= for invoices)
+GET    /customers  DELETE /customers/{id}   GET /items  DELETE /items/{id}
 POST   /receipts           (template_id + data -> validate variables, number,
                             totals, store snapshot)
 GET    /receipts           GET /receipts/{id}
@@ -222,5 +252,7 @@ Errors that point at fields use detail = {code, message, fields}:
   MISSING_VARIABLES (422), DISCOUNT_TOO_LARGE (422), RECEIPT_NUMBER_TAKEN (409),
   QR_CONTENT_TOO_LONG (422; fields = the variables that QR code uses),
   AMOUNT_TOO_LARGE (422; subtotal or total above 9999999999.99, NUMERIC(12,2)),
+  GST_PROFILE_INCOMPLETE, GST_CURRENCY, GST_PER_ITEM, GST_DETAILS_REQUIRED,
+  INVOICE_NUMBER_INVALID (422; GST invoices, see 05-gst-and-speed.md),
   CONTENT_OVERFLOW (422; also refused at POST /receipts), RATE_LIMITED (429,
   30 renders / minute / user), RENDERER_UNAVAILABLE (503).

@@ -3,6 +3,10 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, StringConstraints
 
+from app.services import gst_service
+
+from .common import Gstin
+
 PASSWORD_MIN_LENGTH = 8
 # bcrypt only looks at the first 72 bytes; longer passwords are refused rather
 # than silently cut short
@@ -22,10 +26,14 @@ Password = Annotated[
 Email = Annotated[EmailStr, AfterValidator(str.lower)]
 
 NumberingMode = Literal["sequential", "nanoid"]
+InvoicingMode = Literal["receipts", "gst", "both"]
 
 # Letters, digits and a few separators, so numbers stay readable and file-name safe
 ReceiptPrefix = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9 _\-/#.]{0,12}$")]
 BusinessName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
+BusinessAddress = Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)]
+# GST invoice numbers are prefix + "26-27/0001" and may be at most 16 characters
+InvoicePrefix = Annotated[str, StringConstraints(pattern=gst_service.INVOICE_PREFIX_PATTERN.pattern)]
 
 
 class Token(BaseModel):
@@ -45,6 +53,10 @@ class UserResponse(BaseModel):
     business_name: str | None = None
     receipt_prefix: str
     numbering_mode: NumberingMode
+    business_address: str | None = None
+    gstin: str | None = None
+    invoice_prefix: str
+    invoicing_mode: InvoicingMode | None = None  # None until the welcome question is answered
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,3 +68,8 @@ class AccountUpdate(BaseModel):
     # Applies to numbers issued from now on; the sequence itself carries on
     receipt_prefix: ReceiptPrefix | None = None
     numbering_mode: NumberingMode | None = None
+    # GST tax invoices: printed as the supplier's address and GSTIN; "" clears them
+    business_address: BusinessAddress | None = None
+    gstin: Gstin | Literal[""] | None = None
+    invoice_prefix: InvoicePrefix | None = None
+    invoicing_mode: InvoicingMode | None = None

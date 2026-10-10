@@ -194,14 +194,16 @@ export function SegmentedField<V extends string>({
   );
 }
 
-export const CheckboxField: React.FC<{ id: string; label: string; checked: boolean; onChange: (checked: boolean) => void }> = ({
-  id,
-  label,
-  checked,
-  onChange,
-}) => (
-  <div className="flex items-center gap-2">
-    <Checkbox id={id} checked={checked} onCheckedChange={(c) => onChange(c === true)} />
+export const CheckboxField: React.FC<{
+  id: string;
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  disabled?: boolean;
+  title?: string;
+}> = ({ id, label, checked, onChange, disabled, title }) => (
+  <div className="flex items-center gap-2" title={title}>
+    <Checkbox id={id} checked={checked} disabled={disabled} onCheckedChange={(c) => onChange(c === true)} />
     <Label htmlFor={id} className="text-sm font-normal">{label}</Label>
   </div>
 );

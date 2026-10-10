@@ -16,6 +16,10 @@ import {
 import { CheckboxField, ColorField, NumberField, Section, SegmentedField, SelectField } from "./fields";
 import { FONT_OPTIONS } from "./options";
 import { usePropUpdater } from "./usePropUpdater";
+import { useEditorStore } from "../../store/editorStore";
+import { REQUIRED_COLUMNS } from "../../lib/gst";
+
+const REQUIRED_ON_GST_INVOICES = "A GST invoice must show this column";
 
 type TableElement = Extract<CanvasElement, { type: "items_table" }>;
 type Column = TableElement["props"]["columns"][number];
@@ -38,9 +42,13 @@ const normalize = (columns: Column[]): Column[] => {
 
 export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => {
   const set = usePropUpdater(element);
+  const gstInvoice = useEditorStore((s) => s.documentType === "gst_invoice");
   const { props } = element;
   const columns = props.columns;
-  const unusedKeys = ITEM_COLUMN_KEYS.filter((k) => !columns.some((c) => c.key === k.key));
+  // GST-only fields (HSN, taxable value, ...) are offered on GST invoices
+  const offered = ITEM_COLUMN_KEYS.filter((k) => gstInvoice || !k.gst);
+  const unusedKeys = offered.filter((k) => !columns.some((c) => c.key === k.key));
+  const required = (key: string) => gstInvoice && key in REQUIRED_COLUMNS;
   const total = totalPercent(columns);
 
   const setColumns = (next: Column[]) => set("columns", next);
@@ -69,7 +77,7 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
       <Section title="Columns">
         <p className="text-xs text-muted-foreground">Bound to the receipt's line items. The canvas shows sample rows.</p>
         {columns.map((col, i) => {
-          const keyOptions = ITEM_COLUMN_KEYS.filter((k) => k.key === col.key || !columns.some((c) => c.key === k.key))
+          const keyOptions = ITEM_COLUMN_KEYS.filter((k) => k.key === col.key || (!columns.some((c) => c.key === k.key) && offered.includes(k)))
             .map((k) => ({ value: k.key, label: `Field: ${k.label}` }));
           return (
             <div key={col.key} className="space-y-2 rounded-lg border border-border p-2" data-column={col.key}>
@@ -90,7 +98,13 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
                   />
                 </div>
               </div>
-              <SelectField id={`col-key-${col.key}`} label="Shows" value={col.key} options={keyOptions} onChange={(key) => updateColumn(i, { key })} />
+              {required(col.key) ? (
+                <p className="text-xs text-muted-foreground" title={REQUIRED_ON_GST_INVOICES}>
+                  Shows: {ITEM_COLUMN_KEYS.find((k) => k.key === col.key)?.label} (required on GST invoices)
+                </p>
+              ) : (
+                <SelectField id={`col-key-${col.key}`} label="Shows" value={col.key} options={keyOptions} onChange={(key) => updateColumn(i, { key })} />
+              )}
               <div className="flex items-end justify-between">
                 <SegmentedField label="Align" value={col.align} options={ALIGN_OPTIONS} onChange={(align) => updateColumn(i, { align })} />
                 <div className="flex gap-1">
@@ -100,7 +114,15 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
                   <Button type="button" variant="ghost" size="icon-xs" aria-label="Move column right" disabled={i === columns.length - 1} onClick={() => move(i, 1)}>
                     <ArrowRight />
                   </Button>
-                  <Button type="button" variant="ghost" size="icon-xs" aria-label="Remove column" disabled={columns.length === 1} onClick={() => removeColumn(i)}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label="Remove column"
+                    title={required(col.key) ? REQUIRED_ON_GST_INVOICES : undefined}
+                    disabled={columns.length === 1 || required(col.key)}
+                    onClick={() => removeColumn(i)}
+                  >
                     <Trash2 />
                   </Button>
                 </div>

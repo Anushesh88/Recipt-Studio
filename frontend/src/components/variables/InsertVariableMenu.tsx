@@ -14,6 +14,11 @@ import {
   variableLabel,
 } from "../../lib/variables";
 
+// Built-ins for GST tax invoices, listed under their own heading
+const GST_VARIABLES = new Set([
+  "business.address", "business.gstin", "customer.address", "customer.gstin", "receipt.place_of_supply", "receipt.reverse_charge",
+]);
+
 const MenuHeading: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <div className="px-2 pt-1.5 pb-1 text-xs font-medium text-muted-foreground">{children}</div>
 );
@@ -59,13 +64,20 @@ export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> =
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        className="w-72 gap-0 p-1"
+        collisionPadding={8}
+        // Scrolls rather than running off the screen
+        className="max-h-(--radix-popover-content-available-height) w-72 gap-0 overflow-y-auto p-1"
         data-variable-menu=""
         // the caller puts focus back in its text field, at the inserted variable
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         <MenuHeading>Built-in</MenuHeading>
-        {BUILTIN_VARIABLES.map((v) => (
+        {BUILTIN_VARIABLES.filter((v) => !GST_VARIABLES.has(v.key)).map((v) => (
+          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
+        ))}
+        <Separator className="my-1" />
+        <MenuHeading>GST invoice</MenuHeading>
+        {BUILTIN_VARIABLES.filter((v) => GST_VARIABLES.has(v.key)).map((v) => (
           <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
         ))}
         {customKeys.length > 0 && (

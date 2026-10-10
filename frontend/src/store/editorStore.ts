@@ -10,23 +10,32 @@ import {
   MIN_DESIGN_HEIGHT,
   MIN_ELEMENT_SIZE,
   PAGE_PRESETS,
+  TOAST_DURATION_MS,
+  type DocumentType,
   type PagePreset,
 } from "../lib/units";
 import { floorToGrid, maxGridPosition, snapToGrid } from "../lib/canvasUtils";
 import { tableHeight } from "../lib/layout";
+import { particularsLostWithout } from "../lib/gst";
+import { completeForGst } from "../lib/gstTemplate";
 
 interface EditorSnapshot {
+  documentType: DocumentType;
   page: Canvas["page"];
   elements: CanvasElement[];
 }
 
 interface EditorState {
+  // A plain receipt, or a GST tax invoice (which must show rule 46's particulars)
+  documentType: DocumentType;
   page: Canvas["page"];
   elements: CanvasElement[];
   selectedId: string | null;
   // Text element being edited inline on the canvas (double-click)
   editingId: string | null;
   zoom: number;
+  // A short message for the editor's toast (e.g. why something was refused)
+  notice: string | null;
 
   past: EditorSnapshot[];
   future: EditorSnapshot[];
@@ -44,6 +53,10 @@ interface EditorState {
   loadTemplate: (canvas: Canvas) => void;
   setPagePreset: (preset: PagePreset) => void;
   updatePage: (changes: { background?: string; height?: number }) => void;
+  setDocumentType: (documentType: DocumentType) => void;
+  // Adds whatever a GST invoice still lacks (lib/gstTemplate.ts)
+  addGstRequirements: () => void;
+  showNotice: (message: string | null) => void;
 
   setZoom: (zoom: number) => void;
   selectElement: (id: string | null) => void;
@@ -125,6 +138,21 @@ const renumberZIndex = (elements: CanvasElement[]) => {
   });
 };
 
+// A deep copy of what undo / redo restore
+const snapshotOf = (draft: EditorSnapshot): EditorSnapshot => ({
+  documentType: draft.documentType,
+  page: JSON.parse(JSON.stringify(draft.page)),
+  elements: JSON.parse(JSON.stringify(draft.elements)),
+});
+
+const restore = (draft: EditorState, snapshot: EditorSnapshot) => {
+  draft.documentType = snapshot.documentType;
+  draft.page = snapshot.page;
+  draft.elements = snapshot.elements;
+  draft.lastCoalesceKey = null;
+  clearMissingSelection(draft);
+};
+
 // After undo/redo the selected / edited element may no longer exist
 const clearMissingSelection = (draft: EditorState) => {
   const exists = (id: string | null) => id !== null && draft.elements.some((e) => e.id === id);
@@ -133,28 +161,30 @@ const clearMissingSelection = (draft: EditorState) => {
 };
 
 export const useEditorStore = create<EditorState>()(
-  immer((set) => {
+  immer((set, get) => {
     // Consecutive edits with the same coalesceKey (typing in one inspector field,
     // or one inline-editing session) share a single undo step.
     const saveSnapshot = (draft: EditorState, coalesceKey?: string) => {
       if (coalesceKey !== undefined && draft.lastCoalesceKey === coalesceKey) return;
       draft.lastCoalesceKey = coalesceKey ?? null;
-      draft.past.push({
-        page: JSON.parse(JSON.stringify(draft.page)),
-        elements: JSON.parse(JSON.stringify(draft.elements)),
-      });
+      draft.past.push(snapshotOf(draft));
       if (draft.past.length > MAX_HISTORY) {
         draft.past.shift();
       }
       draft.future = [];
     };
 
+    // Clears the toast after a while; a newer notice restarts the clock
+    let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+
     return {
+      documentType: "receipt",
       page: DEFAULT_PAGE,
       elements: [],
       selectedId: null,
       editingId: null,
       zoom: 1,
+      notice: null,
 
       past: [],
       future: [],
@@ -220,7 +250,14 @@ export const useEditorStore = create<EditorState>()(
           }
         }),
 
-      deleteElement: (id) =>
+      deleteElement: (id) => {
+        // A GST invoice can't lose a legally required field by accident
+        const { documentType, elements, showNotice } = get();
+        const lost = documentType === "gst_invoice" ? particularsLostWithout(elements, id) : [];
+        if (lost.length > 0) {
+          showNotice(`A GST invoice must show: ${lost.join(", ")}. Move or restyle this element instead, or make the document a plain receipt.`);
+          return;
+        }
         set((draft) => {
           saveSnapshot(draft);
           draft.elements = draft.elements.filter((e) => e.id !== id);
@@ -231,19 +268,20 @@ export const useEditorStore = create<EditorState>()(
           if (draft.editingId === id) {
             draft.editingId = null;
           }
-        }),
+        });
+      },
 
       reorderElement: (id, direction) =>
         set((draft) => {
           const index = draft.elements.findIndex((e) => e.id === id);
           if (index < 0) return;
-          
+
           saveSnapshot(draft);
           const elements = draft.elements;
           const el = elements[index];
-          
+
           elements.splice(index, 1);
-          
+
           if (direction === "up") {
             elements.splice(Math.min(elements.length, index + 1), 0, el);
           } else if (direction === "down") {
@@ -253,7 +291,7 @@ export const useEditorStore = create<EditorState>()(
           } else if (direction === "bottom") {
             elements.unshift(el);
           }
-          
+
           renumberZIndex(elements);
         }),
 
@@ -262,6 +300,7 @@ export const useEditorStore = create<EditorState>()(
           draft.past = [];
           draft.future = [];
           draft.lastCoalesceKey = null;
+          draft.documentType = canvas.documentType;
           // Templates saved before pages grew to fit could have elements below the page
           const height = fittedPageHeight(canvas.page, canvas.elements);
           draft.page = height === canvas.page.height ? canvas.page : { ...canvas.page, height };
@@ -295,6 +334,34 @@ export const useEditorStore = create<EditorState>()(
           }
         }),
 
+      setDocumentType: (documentType) =>
+        set((draft) => {
+          if (draft.documentType === documentType) return;
+          saveSnapshot(draft);
+          draft.documentType = documentType;
+        }),
+
+      addGstRequirements: () =>
+        set((draft) => {
+          const elements = completeForGst({ page: draft.page, elements: draft.elements });
+          if (elements === draft.elements) return;
+          saveSnapshot(draft);
+          draft.elements = elements;
+          draft.elements.forEach((el) => normalizeElement(draft.page, el));
+          renumberZIndex(draft.elements);
+          fitAutoPage(draft);
+        }),
+
+      showNotice: (message) => {
+        clearTimeout(noticeTimer);
+        set((draft) => {
+          draft.notice = message;
+        });
+        if (message) {
+          noticeTimer = setTimeout(() => set((draft) => { draft.notice = null; }), TOAST_DURATION_MS);
+        }
+      },
+
       setZoom: (zoom) =>
         set((draft) => {
           draft.zoom = zoom;
@@ -319,37 +386,15 @@ export const useEditorStore = create<EditorState>()(
       undo: () =>
         set((draft) => {
           if (draft.past.length === 0) return;
-          
-          const currentSnapshot: EditorSnapshot = {
-            page: JSON.parse(JSON.stringify(draft.page)),
-            elements: JSON.parse(JSON.stringify(draft.elements)),
-          };
-          
-          draft.future.push(currentSnapshot);
-          
-          const previous = draft.past.pop()!;
-          draft.page = previous.page;
-          draft.elements = previous.elements;
-          draft.lastCoalesceKey = null;
-          clearMissingSelection(draft);
+          draft.future.push(snapshotOf(draft));
+          restore(draft, draft.past.pop()!);
         }),
 
       redo: () =>
         set((draft) => {
           if (draft.future.length === 0) return;
-          
-          const currentSnapshot: EditorSnapshot = {
-            page: JSON.parse(JSON.stringify(draft.page)),
-            elements: JSON.parse(JSON.stringify(draft.elements)),
-          };
-          
-          draft.past.push(currentSnapshot);
-          
-          const next = draft.future.pop()!;
-          draft.page = next.page;
-          draft.elements = next.elements;
-          draft.lastCoalesceKey = null;
-          clearMissingSelection(draft);
+          draft.past.push(snapshotOf(draft));
+          restore(draft, draft.future.pop()!);
         }),
     };
   })

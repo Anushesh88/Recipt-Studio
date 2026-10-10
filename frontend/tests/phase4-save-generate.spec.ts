@@ -22,6 +22,8 @@ async function loginAsNewUser(page: Page): Promise<string> {
   expect((await page.request.post(`${API}/auth/register`, { data: { email, password } })).status()).toBe(200);
   const login = await page.request.post(`${API}/auth/login`, { form: { username: email, password } });
   const { access_token: token } = await login.json();
+  // Past the one-time welcome question
+  await page.request.patch(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` }, data: { invoicing_mode: 'both' } });
   await page.addInitScript((t) => window.localStorage.setItem('token', t), token);
   return token;
 }

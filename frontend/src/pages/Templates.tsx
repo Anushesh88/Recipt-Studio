@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { Copy, FilePlus2, History as HistoryIcon, LayoutTemplate, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '../store/authStore';
 import { createTemplate, deleteTemplate, fetchTemplate, templateKeys, useTemplates, type TemplateSummary } from '../api/templates';
 import { apiErrorMessage } from '../api/client';
+import { useAccount } from '../api/account';
 import { canvasSchema } from '../schema/templateSchema';
 import { PAGE_PRESET_LABELS } from '../lib/units';
+import { STARTER_TEMPLATES, type StarterTemplate } from '../lib/starterTemplates';
 
 const formatUpdated = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
@@ -40,6 +42,9 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
     <article data-template-card={template.name} className="flex h-64 flex-col rounded-lg border border-border bg-white p-4 shadow-sm">
       <Link to={`/editor/${template.id}`} className="flex-1 space-y-1">
         <h2 className="line-clamp-2 text-lg font-semibold hover:underline">{template.name}</h2>
+        {template.document_type === 'gst_invoice' && (
+          <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800">GST tax invoice</span>
+        )}
         <p className="text-sm text-muted-foreground">{PAGE_PRESET_LABELS[template.preset] ?? template.preset}</p>
         <p className="text-sm text-muted-foreground">
           {template.element_count} element{template.element_count === 1 ? '' : 's'}
@@ -74,11 +79,52 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
   );
 }
 
+// A ready-made template, copied into the account and opened in the editor
+function StarterCard({ starter, onError }: { starter: StarterTemplate; onError: (message: string) => void }) {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+
+  const start = async () => {
+    setBusy(true);
+    try {
+      const created = await createTemplate(starter.name, starter.canvas);
+      await queryClient.invalidateQueries({ queryKey: templateKeys.all, exact: true });
+      navigate(`/editor/${created.id}`);
+    } catch (e) {
+      onError(apiErrorMessage(e, "Couldn't create the template."));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      data-starter={starter.id}
+      disabled={busy}
+      onClick={start}
+      className="flex flex-col items-start gap-1 rounded-lg border border-border bg-white p-4 text-left shadow-sm transition-colors hover:border-gray-400 disabled:opacity-60"
+    >
+      <span className="flex items-center gap-1.5 font-medium"><LayoutTemplate className="size-4" />{starter.name}</span>
+      <span className="text-sm text-muted-foreground">{starter.description}</span>
+    </button>
+  );
+}
+
 export default function Templates() {
   const setToken = useAuthStore((state) => state.setToken);
   const navigate = useNavigate();
   const { data: templates, isLoading, isError, error } = useTemplates();
+  const account = useAccount();
   const [actionError, setActionError] = useState<string | null>(null);
+  const mode = account.data?.invoicing_mode;
+  // GST users see the GST starters first, receipt users the receipt
+  const starters = mode === 'gst' ? STARTER_TEMPLATES : mode === 'receipts'
+    ? [...STARTER_TEMPLATES].sort((a, b) => Number(a.canvas.documentType === 'gst_invoice') - Number(b.canvas.documentType === 'gst_invoice'))
+    : STARTER_TEMPLATES;
+
+  // Asked once, right after sign-up
+  if (account.data && mode === null) return <Navigate to="/welcome" replace />;
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-8">
@@ -99,16 +145,23 @@ export default function Templates() {
       </div>
 
       {actionError && <p role="alert" className="mb-4 text-sm text-destructive">{actionError}</p>}
+
+      <section className="mb-8" aria-labelledby="starters-heading">
+        <h2 id="starters-heading" className="mb-3 text-sm font-semibold text-muted-foreground">Start from a ready-made template</h2>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {starters.map((starter) => <StarterCard key={starter.id} starter={starter} onError={setActionError} />)}
+        </div>
+      </section>
       {isError && <p role="alert" className="mb-4 text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your templates.")}</p>}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         <button
           type="button"
-          onClick={() => navigate('/editor')}
+          onClick={() => navigate('/editor', { state: { documentType: mode === 'gst' ? 'gst_invoice' : 'receipt' } })}
           className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50"
         >
           <FilePlus2 className="size-6" />
-          <span className="font-medium">New blank receipt</span>
+          <span className="font-medium">{mode === 'gst' ? 'New blank GST invoice' : 'New blank receipt'}</span>
         </button>
         {templates?.map((t) => <TemplateCard key={t.id} template={t} onError={setActionError} />)}
       </div>

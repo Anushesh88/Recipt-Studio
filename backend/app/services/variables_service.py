@@ -11,14 +11,19 @@ from typing import Any
 VARIABLE_REGEX = re.compile(r"\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}")
 
 BUILTIN_VARIABLES = frozenset({
-    "business.name", "customer.name", "customer.email", "receipt.number",
-    "receipt.date", "receipt.payment_method", "receipt.currency", "receipt.notes",
+    "business.name", "business.address", "business.gstin",
+    "customer.name", "customer.email", "customer.address", "customer.gstin",
+    "receipt.number", "receipt.date", "receipt.payment_method", "receipt.currency",
+    "receipt.notes", "receipt.place_of_supply", "receipt.reverse_charge",
 })
 CUSTOM_PREFIX = "custom."
 
 # Variables a receipt may leave blank, and ones the server fills in itself
+# (the number, and the business address / GSTIN from the account's Settings)
 OPTIONAL_VARIABLES = frozenset({"receipt.notes"})
-SERVER_PROVIDED_VARIABLES = frozenset({"receipt.number"})
+SERVER_PROVIDED_VARIABLES = frozenset({
+    "receipt.number", "business.address", "business.gstin", "receipt.reverse_charge",
+})
 
 CONTENT_ELEMENT_TYPES = frozenset({"text", "qr"})
 
@@ -51,11 +56,9 @@ def resolve(text: str, values: Mapping[str, str]) -> str:
     return VARIABLE_REGEX.sub(lambda m: values.get(m.group(1), ""), text)
 
 
-def missing_required(used: Iterable[str], values: Mapping[str, str]) -> list[str]:
+def missing_required(
+    used: Iterable[str], values: Mapping[str, str], optional: Iterable[str] = OPTIONAL_VARIABLES
+) -> list[str]:
     """Used variables that need a value but have none (blank counts as none)."""
-    return [
-        key for key in used
-        if key not in OPTIONAL_VARIABLES
-        and key not in SERVER_PROVIDED_VARIABLES
-        and not values.get(key, "").strip()
-    ]
+    skip = set(optional) | SERVER_PROVIDED_VARIABLES
+    return [key for key in used if key not in skip and not values.get(key, "").strip()]

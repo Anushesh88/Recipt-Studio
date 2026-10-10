@@ -34,7 +34,8 @@ receipt-studio/
 │   │   ├── schemas/         # Pydantic: auth, template, receipt, canvas
 │   │   ├── api/             # routers: auth, templates, receipts, assets
 │   │   ├── services/        # render_service, totals_service, asset_service,
-│   │   │                    # layout_service, variables_service, numbering_service
+│   │   │                    # layout_service, variables_service, numbering_service,
+│   │   │                    # gst_service, qr_service, catalog_service, ...
 │   │   ├── fonts/           # bundled .ttf/.woff2 for the 8 fonts
 │   │   └── templates_html/  # receipt.html.j2
 │   ├── alembic/
@@ -97,7 +98,8 @@ receipt-studio/
 ## Frontend Rules
 1. Canvas state lives ONLY in `editorStore`. Components never hold element
    geometry in local state.
-2. Store shape: { page, elements: Element[], selectedId, zoom }.
+2. Store shape: { documentType, page, elements: Element[], selectedId, zoom }
+   (plus editingId and notice, UI state).
    Flat array ordered by paint order. No nested trees.
 3. All mutations go through named actions: addElement, updateElement,
    moveElement, resizeElement, deleteElement, reorderElement, loadTemplate.

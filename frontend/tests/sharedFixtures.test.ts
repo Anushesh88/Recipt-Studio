@@ -5,6 +5,16 @@ import { fileURLToPath } from "node:url";
 import { applyLayout, type LayoutElement, type LayoutPage } from "../src/lib/layout";
 import { extractVariables, findUnknownVariables, findVariables, resolveVariables } from "../src/lib/variables";
 import { computeTotals } from "../src/lib/money";
+import {
+  computeGstTotals,
+  financialYear,
+  financialYearLabel,
+  formatInvoiceNumber,
+  gstinProblem,
+  missingParticulars,
+  type GstLineInput,
+  type GstTotals,
+} from "../src/lib/gst";
 import type { CanvasElement } from "../src/schema/templateSchema";
 
 const load = <T,>(name: string): T =>
@@ -79,5 +89,56 @@ describe("shared totals fixtures", () => {
       tax: expected.tax,
       total: expected.total,
     });
+  });
+});
+
+interface GstFixtures {
+  gstin: { gstin: string; problem: string | null }[];
+  totals: {
+    name: string;
+    supplier_state: string;
+    place_of_supply: string;
+    lines: GstLineInput[];
+    expected?: Omit<GstTotals, "lines" | "tax"> & { lines: Omit<GstTotals["lines"][number], "tax">[] };
+    error?: string;
+  }[];
+  financial_year: { date: string; start_year: number; label: string }[];
+  invoice_numbers: { prefix: string; start_year: number; seq: number; number: string }[];
+  particulars: { name: string; elements: { type: CanvasElement["type"]; props: unknown }[]; missing: string[] }[];
+}
+
+describe("shared GST fixtures", () => {
+  const fixtures = load<GstFixtures>("gst_cases.json");
+
+  it.each(fixtures.gstin)("GSTIN $gstin", ({ gstin, problem }) => {
+    expect(gstinProblem(gstin)).toBe(problem);
+  });
+
+  it.each(fixtures.totals)("$name", ({ lines, supplier_state, place_of_supply, expected, error }) => {
+    const result = computeGstTotals(lines, supplier_state, place_of_supply);
+    if (error) {
+      expect(result).toMatchObject({ ok: false, error });
+      return;
+    }
+    expect(result.ok).toBe(true);
+    if (!result.ok || !expected) return;
+    const { lines: computedLines, tax: _tax, ...totals } = result.totals;
+    expect(computedLines.map(({ tax: _lineTax, ...line }) => line)).toEqual(expected.lines);
+    const { lines: _expectedLines, ...expectedTotals } = expected;
+    expect(totals).toEqual(expectedTotals);
+  });
+
+  it("financial years and invoice numbers", () => {
+    for (const { date, start_year, label } of fixtures.financial_year) {
+      expect(financialYear(date)).toBe(start_year);
+      expect(financialYearLabel(start_year)).toBe(label);
+    }
+    for (const { prefix, start_year, seq, number } of fixtures.invoice_numbers) {
+      expect(formatInvoiceNumber(prefix, start_year, seq)).toBe(number);
+    }
+  });
+
+  it.each(fixtures.particulars)("particulars: $name", ({ elements, missing }) => {
+    expect(missingParticulars(elements)).toEqual(missing);
   });
 });

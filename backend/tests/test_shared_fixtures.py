@@ -1,12 +1,13 @@
 """Runs shared/fixtures (also run by the frontend) against the backend services."""
 import json
+from datetime import date
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-from app.services import layout_service, totals_service, variables_service
+from app.services import gst_service, layout_service, totals_service, variables_service
 
 FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
@@ -74,3 +75,49 @@ def test_layout() -> None:
             element_id: {"y": y, "height": height}
             for element_id, (y, height) in result.positions.items()
         } == expected["positions"], case["name"]
+
+
+def test_gstin_checks() -> None:
+    for case in load("gst_cases.json")["gstin"]:
+        assert gst_service.gstin_problem(case["gstin"]) == case["problem"], case["gstin"]
+
+
+def test_gst_totals() -> None:
+    for case in load("gst_cases.json")["totals"]:
+        lines = [
+            gst_service.GstLineInput(
+                Decimal(line["qty"]), Decimal(line["unit_price"]), Decimal(line["discount"]), Decimal(line["gst_rate"])
+            )
+            for line in case["lines"]
+        ]
+        if "error" in case:
+            assert case["error"] == "LINE_DISCOUNT_TOO_LARGE"
+            with pytest.raises(gst_service.LineDiscountTooLargeError):
+                gst_service.compute_totals(lines, case["supplier_state"], case["place_of_supply"])
+            continue
+        result = gst_service.compute_totals(lines, case["supplier_state"], case["place_of_supply"])
+        expected = case["expected"]
+        assert (result.supply, result.state_tax_label) == (expected["supply"], expected["state_tax_label"]), case["name"]
+        assert [
+            {"amount": str(line.amount), "taxable_value": str(line.taxable_value),
+             "cgst": str(line.cgst), "sgst": str(line.sgst), "igst": str(line.igst)}
+            for line in result.lines
+        ] == expected["lines"], case["name"]
+        for key in ("subtotal", "discount", "taxable", "cgst", "sgst", "igst", "total"):
+            assert str(getattr(result, key)) == expected[key], (case["name"], key)
+
+
+def test_financial_years_and_invoice_numbers() -> None:
+    cases = load("gst_cases.json")
+    for case in cases["financial_year"]:
+        start = gst_service.financial_year(date.fromisoformat(case["date"]))
+        assert start == case["start_year"], case["date"]
+        assert gst_service.financial_year_label(start) == case["label"], case["date"]
+    for case in cases["invoice_numbers"]:
+        number = gst_service.format_invoice_number(case["prefix"], case["start_year"], case["seq"])
+        assert number == case["number"]
+
+
+def test_gst_invoice_particulars() -> None:
+    for case in load("gst_cases.json")["particulars"]:
+        assert gst_service.missing_particulars(case["elements"]) == case["missing"], case["name"]

@@ -143,7 +143,9 @@ async def test_totals_are_computed_server_side(client: AsyncClient, login: Login
     body = response.json()
     # Client-sent line totals are ignored
     assert [i["line_total"] for i in body["data"]["items"]] == ["9.00", "3.25"]
-    assert body["data"]["computed"] == {"subtotal": "12.25", "tax": "0.88", "discount": "1.25", "total": "11.88"}
+    assert body["data"]["computed"] == {
+        "subtotal": "12.25", "tax": "0.88", "discount": "1.25", "total": "11.88", "gst": None,
+    }
     assert body["total_amount"] == "11.88"
     assert body["currency"] == "USD"
     assert body["data"]["receipt"]["number"] == "R-0001"

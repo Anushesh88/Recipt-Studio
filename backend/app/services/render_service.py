@@ -60,7 +60,11 @@ TOTALS_LINE_HEIGHT = 1.4
 TOTALS_ROW_GAP = 4
 TOTALS_EMPHASIS_SCALE = 1.2
 TOTALS_COLOR = "#000000"
-TOTALS_LABELS = {"subtotal": "Subtotal", "tax": "Tax", "discount": "Discount", "total": "Total"}
+TOTALS_LABELS = {
+    "subtotal": "Subtotal", "discount": "Discount", "taxable": "Taxable value", "tax": "Tax", "total": "Total",
+}
+# A plain receipt's single tax line; GST invoices pass their own (CGST + SGST, or IGST)
+DEFAULT_TAX_ROWS: tuple[tuple[str, str], ...] = (("tax", "Tax"),)
 SIGNATURE_LABEL_FONT_SIZE = 12
 SIGNATURE_LABEL_HEIGHT = 16
 SIGNATURE_LINE_THICKNESS = 2
@@ -79,8 +83,10 @@ class RendererUnavailableError(Exception):
 @dataclass(frozen=True)
 class ReceiptContent:
     values: Mapping[str, str]          # variable key -> resolved value
-    rows: Sequence[Mapping[str, str]]  # line items: description, qty, unit_price, line_total
-    totals: Mapping[str, str]          # subtotal, tax, discount, total
+    rows: Sequence[Mapping[str, str]]  # line items, keyed like the table columns
+    totals: Mapping[str, str]          # subtotal, discount, taxable, tax, total (+ cgst, sgst, igst)
+    # What the totals' "tax" line prints as: (totals key, label) rows
+    tax_rows: Sequence[tuple[str, str]] = DEFAULT_TAX_ROWS
 
 
 _env = SandboxedEnvironment(
@@ -150,21 +156,34 @@ def _table_model(element: Mapping[str, Any], rows: Sequence[Mapping[str, str]]) 
     }
 
 
-def _totals_model(element: Mapping[str, Any], totals: Mapping[str, str]) -> dict[str, Any]:
+def _totals_lines(show: Sequence[str], tax_rows: Sequence[tuple[str, str]]) -> list[tuple[str, str, str]]:
+    """(line, totals key, label) per printed row: "tax" becomes its tax rows."""
+    lines: list[tuple[str, str, str]] = []
+    for line in show:
+        if line == "tax":
+            lines += [(line, key, label) for key, label in tax_rows]
+        else:
+            lines.append((line, line, TOTALS_LABELS[line]))
+    return lines
+
+
+def _totals_model(
+    element: Mapping[str, Any], totals: Mapping[str, str], tax_rows: Sequence[tuple[str, str]]
+) -> dict[str, Any]:
     props = element["props"]
     rows, top = [], 0
-    for line in props["show"]:
+    for line, key, label in _totals_lines(props["show"], tax_rows):
         emphasized = line == "total" and props["emphasizeTotal"]
         font_size = props["fontSize"] * TOTALS_EMPHASIS_SCALE if emphasized else props["fontSize"]
         height = math.ceil(font_size * TOTALS_LINE_HEIGHT)
         rows.append({
-            "line": line,
+            "line": key,
             "top": top,
             "height": height,
             "font_size": css_number(font_size),
             "weight": 700 if emphasized else 400,
-            "label": TOTALS_LABELS[line],
-            "value": f"{props['currencySymbol']}{totals.get(line, '')}",
+            "label": label,
+            "value": f"{props['currencySymbol']}{totals.get(key, '')}",
         })
         top += height + TOTALS_ROW_GAP
     return {"font": font_stack(props["fontFamily"]), "color": TOTALS_COLOR, "rows": rows}
@@ -218,7 +237,7 @@ def element_model(
     elif kind == "items_table":
         model.update(_table_model(element, content.rows))
     elif kind == "totals":
-        model.update(_totals_model(element, content.totals))
+        model.update(_totals_model(element, content.totals, content.tax_rows))
     elif kind == "qr":
         model.update(svg=_qr_svg(variables_service.resolve(props["content"], content.values), props["errorCorrection"]))
     elif kind == "signature":

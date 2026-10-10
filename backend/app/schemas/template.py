@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
-from .canvas import Canvas
+from .canvas import Canvas, DocumentType
 from .common import UtcDatetime
 
 TemplateName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
@@ -24,6 +24,7 @@ class TemplateSummary(BaseModel):
     id: uuid.UUID
     name: str
     preset: str
+    document_type: DocumentType
     element_count: int
     created_at: UtcDatetime | None
     updated_at: UtcDatetime | None
