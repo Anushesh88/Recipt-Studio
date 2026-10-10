@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.core.rate_limit import SlidingWindowLimiter
 from app.models.user import User
 from app.services.export_service import ExportFile
+from app.services.qr_service import QrContentTooLongError
+from app.services.totals_service import AmountTooLargeError
 
 export_limiter = SlidingWindowLimiter(settings.EXPORT_RATE_LIMIT, settings.EXPORT_RATE_WINDOW_SECONDS)
 
@@ -41,6 +43,19 @@ def overflow_error(preset: str) -> HTTPException:
         "margin. Remove some line items, move elements up, or use the thermal page size.",
         ["items"],
     )
+
+
+def qr_too_long_error(error: QrContentTooLongError) -> HTTPException:
+    return api_error(
+        status.HTTP_422_UNPROCESSABLE_CONTENT,
+        "QR_CONTENT_TOO_LONG",
+        f"{error} Shorten the fields it uses.",
+        error.fields,
+    )
+
+
+def amount_too_large_error(error: AmountTooLargeError) -> HTTPException:
+    return api_error(status.HTTP_422_UNPROCESSABLE_CONTENT, "AMOUNT_TOO_LARGE", str(error), ["items"])
 
 
 def renderer_unavailable_error() -> HTTPException:

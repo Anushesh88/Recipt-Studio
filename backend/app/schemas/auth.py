@@ -1,7 +1,25 @@
 import uuid
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, StringConstraints
+from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, StringConstraints
+
+PASSWORD_MIN_LENGTH = 8
+# bcrypt only looks at the first 72 bytes; longer passwords are refused rather
+# than silently cut short
+PASSWORD_MAX_BYTES = 72
+
+
+def _check_password_bytes(password: str) -> str:
+    if len(password.encode("utf-8")) > PASSWORD_MAX_BYTES:
+        raise ValueError(f"Password must be at most {PASSWORD_MAX_BYTES} bytes long")
+    return password
+
+
+Password = Annotated[
+    str, StringConstraints(min_length=PASSWORD_MIN_LENGTH), AfterValidator(_check_password_bytes)
+]
+# Stored lowercase: one account per address, however it's typed
+Email = Annotated[EmailStr, AfterValidator(str.lower)]
 
 NumberingMode = Literal["sequential", "nanoid"]
 
@@ -18,8 +36,8 @@ class TokenData(BaseModel):
     email: str | None = None
 
 class UserCreate(BaseModel):
-    email: EmailStr
-    password: str
+    email: Email
+    password: Password
 
 class UserResponse(BaseModel):
     id: uuid.UUID

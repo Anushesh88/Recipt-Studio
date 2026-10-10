@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEditorStore } from "../../store/editorStore";
@@ -39,6 +39,9 @@ export function useTemplatePersistence({
   const [savedName, setSavedName] = useState(initialName);
   const [savedSnapshot, setSavedSnapshot] = useState(() => stableStringify(initialCanvas));
   const [saving, setSaving] = useState(false);
+  // Set synchronously, unlike `saving`: a second Ctrl+S before React re-renders
+  // must not start another save (for a new template, a second copy)
+  const savingRef = useRef(false);
   const [problem, setProblem] = useState<SaveProblem | null>(null);
 
   const page = useEditorStore((s) => s.page);
@@ -51,6 +54,7 @@ export function useTemplatePersistence({
 
   const save = useCallback(
     async (asNew?: { name: string }) => {
+      if (savingRef.current) return;
       const canvas = currentCanvas();
       const parsed = canvasSchema.safeParse(canvas);
       if (!parsed.success) {
@@ -58,6 +62,7 @@ export function useTemplatePersistence({
         return;
       }
       const finalName = (asNew?.name ?? name).trim() || UNTITLED_TEMPLATE;
+      savingRef.current = true;
       setSaving(true);
       setProblem(null);
       try {
@@ -76,6 +81,7 @@ export function useTemplatePersistence({
       } catch (e) {
         setProblem({ message: apiErrorMessage(e, "Couldn't save the template. Please try again."), issues: [] });
       } finally {
+        savingRef.current = false;
         setSaving(false);
       }
     },

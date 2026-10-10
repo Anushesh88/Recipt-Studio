@@ -7,7 +7,8 @@ checked against shared/fixtures/totals_cases.json):
   taxable    = subtotal - discount          (discount may not exceed subtotal)
   tax        = round(taxable * tax_rate)
   total      = taxable + tax
-Every amount rounds half-up to cents.
+Every amount rounds half-up to cents. The subtotal and total may not exceed
+MAX_AMOUNT, the largest receipts.total_amount NUMERIC(12, 2) can store.
 """
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -15,9 +16,14 @@ from decimal import ROUND_HALF_UP, Decimal
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
+MAX_AMOUNT = Decimal("9999999999.99")  # NUMERIC(12, 2)
 
 
 class DiscountTooLargeError(ValueError):
+    pass
+
+
+class AmountTooLargeError(ValueError):
     pass
 
 
@@ -48,6 +54,8 @@ def compute_totals(items: Sequence[LineInput], tax_rate: Decimal, discount: Deci
         raise DiscountTooLargeError("The discount can't be more than the subtotal.")
     taxable = subtotal - discount
     tax = to_cents(taxable * tax_rate)
+    if subtotal > MAX_AMOUNT or taxable + tax > MAX_AMOUNT:
+        raise AmountTooLargeError(f"The total can't be more than {MAX_AMOUNT:,}.")
     return Totals(
         line_totals=line_totals,
         subtotal=subtotal,

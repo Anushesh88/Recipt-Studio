@@ -78,3 +78,16 @@ async def test_templates_are_private(client: AsyncClient, login: Login) -> None:
     assert (await client.delete(path, headers=other)).status_code == 404
     assert (await client.get("/templates", headers=other)).json() == []
     assert (await client.get("/templates")).status_code == 401
+
+
+async def test_infinity_and_nan_are_a_clean_422(client: AsyncClient, login: Login) -> None:
+    headers = {**(await login("owner@example.com")), "Content-Type": "application/json"}
+    for bad in ("Infinity", "-Infinity", "NaN"):
+        # Python's JSON parser accepts these tokens; the canvas must not
+        body = '{"name": "T", "canvas": {"page": {"preset": "thermal80", "width": 302, "height": 400, '
+        body += '"heightMode": "auto", "background": "#FFFFFF", "margin": 12}, "elements": [{"id": "t", '
+        body += f'"type": "text", "x": 12, "y": {bad}, "width": 200, "height": 30, "props": {{"content": "Hi", '
+        body += '"fontFamily": "Inter", "fontSize": 14, "color": "#111111"}}]}}'
+        response = await client.post("/templates", headers=headers, content=body)
+        assert response.status_code == 422, bad
+        assert any(err["loc"][-1] == "y" for err in response.json()["detail"]), response.text

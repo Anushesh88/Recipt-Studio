@@ -18,6 +18,7 @@ from app.schemas.receipt import (
 from app.services import (
     layout_service,
     numbering_service,
+    qr_service,
     template_service,
     totals_service,
     variables_service,
@@ -75,6 +76,13 @@ async def create_receipt(db: AsyncSession, user: User, payload: ReceiptCreate) -
 
     # Last, so a rejected request never consumes a sequence number
     number = await numbering_service.assign_number(db, user, data.receipt.number or None)
+
+    # QR codes hold limited text, so they're checked with the final number filled in
+    try:
+        qr_service.check_codes(template.canvas.get("elements", []), variable_values(data, number))
+    except qr_service.QrContentTooLongError:
+        await db.rollback()  # hands the sequence number back
+        raise
 
     stored = ReceiptDataOut(
         business=data.business,

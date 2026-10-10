@@ -42,6 +42,10 @@ docker compose up --build
 This starts Postgres, runs the migrations, and serves the API on port 8000.
 Run the frontend with `npm run dev` as above.
 
+The compose file is for local development (it uses the public dev
+`SECRET_KEY`). The backend image on its own runs as production and needs a real
+`SECRET_KEY`; see [backend/README.md](backend/README.md#setup).
+
 ## Tests
 
 See [backend/README.md](backend/README.md#checks) and

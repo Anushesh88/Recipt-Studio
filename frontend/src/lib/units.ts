@@ -79,23 +79,40 @@ export const TOTALS_FIELDS = [
 ] as const;
 
 // --- Limits (mirrored by the backend schemas) ---------------------------------
+// Template limits: backend app/schemas/canvas.py
 export const FONT_SIZE_RANGE = { min: 6, max: 96 } as const;
 export const LINE_HEIGHT_RANGE = { min: 0.8, max: 3, step: 0.1 } as const;
 export const ROW_PADDING_RANGE = { min: 0, max: 24 } as const;
 export const DIVIDER_MIN_THICKNESS = 1;
+export const ELEMENT_ID_MAX_LENGTH = 64;
+export const LABEL_MAX_LENGTH = 100; // table column headers, signature label
+export const MAX_PAGE_MARGIN = 96;
+export const CURRENCY_SYMBOL_MAX_LENGTH = 4;
+// Most text a QR code (version 40, byte mode) holds, in UTF-8 bytes, per
+// error-correction level; backend services/qr_service.py
+export const QR_BYTE_CAPACITY = { L: 2953, M: 2331, Q: 1663, H: 1273 } as const;
+// Receipt data limits: backend app/schemas/receipt.py
 export const TEMPLATE_NAME_MAX_LENGTH = 120;
 export const RECEIPT_NUMBER_MAX_LENGTH = 40;
 export const NOTES_MAX_LENGTH = 1000;
+export const SHORT_TEXT_MAX_LENGTH = 200; // business / customer name, item description
+export const PAYMENT_METHOD_MAX_LENGTH = 60;
+export const CUSTOM_VALUE_MAX_LENGTH = 500;
 export const MAX_LINE_ITEMS = 200;
+export const MAX_QTY = 1_000_000;
+// Largest amount receipts.total_amount NUMERIC(12, 2) stores (backend totals_service.MAX_AMOUNT)
+export const MAX_AMOUNT = "9999999999.99";
 export const CURRENCY_CODE_LENGTH = 3; // ISO 4217, e.g. USD
 export const DEFAULT_CURRENCY = "USD";
-export const CURRENCY_SYMBOL_MAX_LENGTH = 4;
 export const HEX_COLOR_LENGTH = 7; // "#RRGGBB"
 export const MAX_ASSET_BYTES = 2 * 1024 * 1024; // PNG / JPG uploads
+// Account limits: backend app/schemas/auth.py
 export const BUSINESS_NAME_MAX_LENGTH = 120;
 export const RECEIPT_PREFIX_MAX_LENGTH = 12;
 // Letters, digits and a few separators (backend ReceiptPrefix)
 export const RECEIPT_PREFIX_PATTERN = /^[A-Za-z0-9 _\-/#.]*$/;
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_BYTES = 72; // bcrypt ignores anything longer
 export const MONEY_DECIMAL_PLACES = 2;
 
 // --- Items table columns ---------------------------------------------------------
@@ -128,31 +145,18 @@ export const ITEMS_TABLE_SAMPLE_ROWS = 3;
 
 export type PagePreset = z.infer<typeof pageConfigSchema>["preset"];
 
+// Each preset's size in px @96dpi; the template schema holds pages to these
+// (mirrored by PAGE_PRESETS in backend app/schemas/canvas.py)
+export const PAGE_SIZES = {
+  thermal80: { width: 302, height: 400, heightMode: "auto", margin: 12 }, // 80mm; height = default design height
+  a5: { width: 559, height: 794, heightMode: "fixed", margin: 24 }, // A5 portrait
+  a4: { width: 794, height: 1123, heightMode: "fixed", margin: 32 }, // A4 portrait
+} as const;
+
 export const PAGE_PRESETS: Record<PagePreset, z.infer<typeof pageConfigSchema>> = {
-  thermal80: {
-    preset: "thermal80",
-    width: 302, // 80mm
-    height: 400, // design height
-    heightMode: "auto",
-    background: "#FFFFFF",
-    margin: 12,
-  },
-  a5: {
-    preset: "a5",
-    width: 559, // A5 portrait @96dpi
-    height: 794,
-    heightMode: "fixed",
-    background: "#FFFFFF",
-    margin: 24,
-  },
-  a4: {
-    preset: "a4",
-    width: 794,
-    height: 1123,
-    heightMode: "fixed",
-    background: "#FFFFFF",
-    margin: 32,
-  },
+  thermal80: { preset: "thermal80", ...PAGE_SIZES.thermal80, background: "#FFFFFF" },
+  a5: { preset: "a5", ...PAGE_SIZES.a5, background: "#FFFFFF" },
+  a4: { preset: "a4", ...PAGE_SIZES.a4, background: "#FFFFFF" },
 };
 
 export const DEFAULT_PAGE = PAGE_PRESETS.thermal80;

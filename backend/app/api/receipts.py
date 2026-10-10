@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
 from app.api.rendering import (
+    amount_too_large_error,
     file_response,
     overflow_error,
+    qr_too_long_error,
     rate_limited_user,
     renderer_unavailable_error,
 )
@@ -24,6 +26,7 @@ from app.services import (
     export_service,
     layout_service,
     numbering_service,
+    qr_service,
     receipt_service,
     render_service,
     totals_service,
@@ -71,6 +74,10 @@ async def create_receipt(
         ) from None
     except totals_service.DiscountTooLargeError as e:
         raise _error(status.HTTP_422_UNPROCESSABLE_CONTENT, "DISCOUNT_TOO_LARGE", str(e), ["discount"]) from None
+    except totals_service.AmountTooLargeError as e:
+        raise amount_too_large_error(e) from None
+    except qr_service.QrContentTooLongError as e:
+        raise qr_too_long_error(e) from None
     except numbering_service.ReceiptNumberTakenError as e:
         raise _error(
             status.HTTP_409_CONFLICT,
@@ -120,6 +127,8 @@ async def export_receipt(
         export = await export_service.export_receipt(db, current_user, receipt, format)
     except render_service.ContentOverflowError as e:
         raise overflow_error(e.preset) from None
+    except qr_service.QrContentTooLongError as e:
+        raise qr_too_long_error(e) from None
     except render_service.RendererUnavailableError:
         raise renderer_unavailable_error() from None
     return file_response(export)

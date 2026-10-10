@@ -9,7 +9,13 @@ Security: user text is substituted with the whitelist regex
 (variables_service.resolve) and handed to a SandboxedEnvironment with autoescape
 on, as data only; templates never come from users. Rendering may only read the
 bundled fonts and inline data: images.
+
+WeasyPrint and PyMuPDF are synchronous and CPU-bound: the async endpoints call
+render_pdf_async / pdf_to_png_async, which run them on one worker thread so the
+event loop keeps serving other requests (and renders queue up rather than
+competing for the CPU).
 """
+import asyncio
 import base64
 import json
 import math
@@ -17,6 +23,7 @@ import os
 import urllib.request
 import uuid
 from collections.abc import Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -32,7 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.user import User
-from app.services import asset_service, layout_service, variables_service
+from app.services import asset_service, layout_service, qr_service, variables_service
 
 APP_DIR = Path(__file__).resolve().parents[1]
 TEMPLATES_DIR = APP_DIR / "templates_html"
@@ -234,6 +241,8 @@ def build_html(
     layout = layout_service.apply_layout(page, canvas["elements"], len(content.rows))
     if layout.error == layout_service.CONTENT_OVERFLOW:
         raise ContentOverflowError(str(page.get("preset", "")))
+    # segno can't encode more than a QR code holds (QrContentTooLongError)
+    qr_service.check_codes(canvas["elements"], content.values)
     html = _env.get_template("receipt.html.j2").render(
         page=page,
         page_height=css_number(layout.page_height),
@@ -304,3 +313,14 @@ def pdf_to_png(pdf: bytes, scale: float = PNG_SCALE) -> bytes:
         pixmap = document[0].get_pixmap(matrix=matrix, alpha=False)
         png: bytes = pixmap.tobytes("png")
     return png
+
+
+_render_thread = ThreadPoolExecutor(max_workers=1, thread_name_prefix="render")
+
+
+async def render_pdf_async(html: str) -> bytes:
+    return await asyncio.get_running_loop().run_in_executor(_render_thread, render_pdf, html)
+
+
+async def pdf_to_png_async(pdf: bytes) -> bytes:
+    return await asyncio.get_running_loop().run_in_executor(_render_thread, pdf_to_png, pdf)

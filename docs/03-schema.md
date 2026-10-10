@@ -102,6 +102,17 @@ Allowed in: text.props.content, qr.props.content only.
 - fontSize 6..96; colors are 6-digit hex; fontFamily in the curated 8
 - max 1 items_table, max 1 totals; max 100 elements; JSON max 256 KB
 - every variable used must be built-in or custom.*
+- the page size comes from its preset: thermal80 302 wide, auto height, design
+  height 200..3000; a5 559 x 794 and a4 794 x 1123, fixed; margin 0..96
+- y and height at most 3000; fontWeight 400/500/600/700; lineHeight 0.8..3;
+  table rowPadding 0..24, 1-4 columns, each a distinct line-item field
+  (description, qty, unit_price, line_total) with width 0..1; labels at most
+  100 characters; currencySymbol at most 4; divider thickness 1..8; asset ids
+  are UUIDs; no Infinity / NaN anywhere (the editor's own input ranges, so the
+  API accepts exactly what the editor can make)
+- QR content must fit a QR code: at most 2953 / 2331 / 1663 / 1273 UTF-8 bytes
+  at error correction L / M / Q / H. Checked on the template, and again with
+  the values filled in when a receipt is created or rendered
 
 ## Layout Algorithm (shared by layout.ts and layout_service.py)
 Inputs: template, n_rows (number of line items)
@@ -192,7 +203,8 @@ receipts
   INDEX (user_id, created_at DESC)
 
 ## Key API Endpoints
-POST   /auth/register, /auth/login
+POST   /auth/register, /auth/login   (passwords: at least 8 characters, at most
+                                   72 bytes; emails are case-insensitive)
 GET    /auth/me            PATCH /auth/me   (business name, receipt prefix,
                                              numbering mode: sequential | nanoid)
 GET    /templates          POST /templates
@@ -208,5 +220,7 @@ POST   /preview            (canvas + data -> PDF/PNG/HTML without saving or
 
 Errors that point at fields use detail = {code, message, fields}:
   MISSING_VARIABLES (422), DISCOUNT_TOO_LARGE (422), RECEIPT_NUMBER_TAKEN (409),
+  QR_CONTENT_TOO_LONG (422; fields = the variables that QR code uses),
+  AMOUNT_TOO_LARGE (422; subtotal or total above 9999999999.99, NUMERIC(12,2)),
   CONTENT_OVERFLOW (422; also refused at POST /receipts), RATE_LIMITED (429,
   30 renders / minute / user), RENDERER_UNAVAILABLE (503).

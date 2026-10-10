@@ -128,7 +128,8 @@ export const Settings: React.FC = () => {
       </div>
       {account && <p className="mb-4 text-sm text-muted-foreground">Signed in as {account.email}</p>}
       {isError && <p role="alert" className="text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your settings.")}</p>}
-      {account ? <SettingsForm account={account} /> : !isError && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {/* keyed by account so the form never keeps another account's values */}
+      {account ? <SettingsForm key={account.id} account={account} /> : !isError && <p className="text-sm text-muted-foreground">Loading…</p>}
     </div>
   );
 };

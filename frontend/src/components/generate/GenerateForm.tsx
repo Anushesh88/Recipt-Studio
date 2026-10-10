@@ -9,17 +9,33 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { Canvas } from "../../schema/templateSchema";
-import { createReceipt, receiptApiError, receiptKeys, useNextNumber, type ReceiptRecord } from "../../api/receipts";
+import {
+  createReceipt,
+  receiptApiError,
+  receiptKeys,
+  requestFieldErrors,
+  useNextNumber,
+  type ReceiptApiError,
+  type ReceiptRecord,
+} from "../../api/receipts";
 import { apiErrorMessage } from "../../api/client";
 import { variableLabel, CUSTOM_PREFIX } from "../../lib/variables";
 import { ReceiptPreview } from "../preview/ReceiptPreview";
 import { ExportButtons } from "../receipts/ExportButtons";
 import { useAccount } from "../../api/account";
 import { useElementWidth } from "./useElementWidth";
-import { CURRENCY_CODE_LENGTH, MAX_LINE_ITEMS, PREVIEW_MAX_WIDTH_PX } from "../../lib/units";
+import {
+  CURRENCY_CODE_LENGTH,
+  CUSTOM_VALUE_MAX_LENGTH,
+  MAX_LINE_ITEMS,
+  PREVIEW_MAX_WIDTH_PX,
+  RECEIPT_NUMBER_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+} from "../../lib/units";
 import {
   buildFormModel,
   emptyLineItem,
+  FIELD_MAX_LENGTH,
   previewFromForm,
   previewFromReceipt,
   toPayload,
@@ -37,6 +53,16 @@ function errorAt(errors: FieldErrors<GenerateValues>, path: string): string | un
   const message = (node as { message?: unknown } | undefined)?.message;
   return typeof message === "string" ? message : undefined;
 }
+
+// What to show at each field the server named
+function fieldMessage(apiError: ReceiptApiError, field: string): string {
+  if (apiError.code === "MISSING_VARIABLES") return `${variableLabel(field)} is required`;
+  if (apiError.code === "QR_CONTENT_TOO_LONG") return "Too long for the QR code";
+  return apiError.message;
+}
+
+// Codes whose message also goes above the submit button
+const FORM_LEVEL_CODES = new Set(["MISSING_VARIABLES", "QR_CONTENT_TOO_LONG"]);
 
 const FieldError: React.FC<{ message?: string }> = ({ message }) =>
   message ? <p className="text-xs text-destructive">{message}</p> : null;
@@ -89,13 +115,18 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
       void queryClient.invalidateQueries({ queryKey: receiptKeys.all });
     } catch (e) {
       const apiError = receiptApiError(e);
+      const invalid = requestFieldErrors(e);
       if (apiError && apiError.fields.length > 0) {
         // The API names fields with the same dotted paths as the form
         for (const field of apiError.fields) {
-          const message = apiError.code === "MISSING_VARIABLES" ? `${variableLabel(field)} is required` : apiError.message;
+          setError(field as Path<GenerateValues>, { message: fieldMessage(apiError, field) }, { shouldFocus: true });
+        }
+        if (FORM_LEVEL_CODES.has(apiError.code)) setFormError(apiError.message);
+      } else if (invalid.length > 0) {
+        for (const { field, message } of invalid) {
           setError(field as Path<GenerateValues>, { message }, { shouldFocus: true });
         }
-        if (apiError.code === "MISSING_VARIABLES") setFormError(apiError.message);
+        setFormError("Some values weren't accepted; see the highlighted fields.");
       } else {
         setFormError(apiErrorMessage(e, "Couldn't create the receipt. Please try again."));
       }
@@ -127,6 +158,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
           <Input
             id={id}
             type={key === "customer.email" ? "email" : key === "receipt.date" ? "date" : "text"}
+            maxLength={FIELD_MAX_LENGTH[key]}
             list={key === "receipt.payment_method" ? "payment-methods" : undefined}
             aria-invalid={Boolean(err(key))}
             {...register(path)}
@@ -171,6 +203,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                   <Label htmlFor="field-receipt-number">Receipt number</Label>
                   <Input
                     id="field-receipt-number"
+                    maxLength={RECEIPT_NUMBER_MAX_LENGTH}
                     placeholder={autoNumber ?? (nextNumber.data?.mode === "nanoid" ? "Random ID" : "Automatic")}
                     aria-invalid={Boolean(err("receipt.number"))}
                     {...register("receipt.number")}
@@ -199,7 +232,12 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                   return (
                     <div key={key} className="space-y-1.5">
                       <Label htmlFor={`field-custom-${key}`}>{variableLabel(CUSTOM_PREFIX + key)}</Label>
-                      <Input id={`field-custom-${key}`} aria-invalid={Boolean(err(path))} {...register(path as Path<GenerateValues>)} />
+                      <Input
+                        id={`field-custom-${key}`}
+                        maxLength={CUSTOM_VALUE_MAX_LENGTH}
+                        aria-invalid={Boolean(err(path))}
+                        {...register(path as Path<GenerateValues>)}
+                      />
                       <FieldError message={err(path)} />
                     </div>
                   );
@@ -218,7 +256,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                     <div key={field.id} className="grid grid-cols-[4.5rem_6rem_1fr_2rem] items-start gap-2 sm:grid-cols-[1fr_4.5rem_6rem_5rem_2rem]" data-line-item={index}>
                       {/* full width on phones, first column from sm up */}
                       <div className="col-span-4 sm:col-span-1">
-                        <Input aria-label={`Item ${index + 1} description`} placeholder="Description" {...register(`items.${index}.description`)} />
+                        <Input aria-label={`Item ${index + 1} description`} placeholder="Description" maxLength={SHORT_TEXT_MAX_LENGTH} {...register(`items.${index}.description`)} />
                         <FieldError message={err(`items.${index}.description`)} />
                       </div>
                       <div>
@@ -241,7 +279,8 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                 <Plus />
                 Add item
               </Button>
-              <FieldError message={err("items")} />
+              {/* list-level errors (too many items, total too large) live at items.root */}
+              <FieldError message={err("items") ?? err("items.root")} />
             </Section>
 
             <Section title="Tax and discount">

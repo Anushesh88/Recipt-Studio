@@ -68,7 +68,7 @@ async def _receipt_pdf(db: AsyncSession, user: User, receipt: Receipt) -> bytes:
     html, _ = render_service.build_html(
         receipt.template_snapshot, content_from_stored(data, receipt.receipt_number), assets
     )
-    pdf = render_service.render_pdf(html)
+    pdf = await render_service.render_pdf_async(html)
 
     cached.parent.mkdir(parents=True, exist_ok=True)
     cached.write_bytes(pdf)
@@ -79,7 +79,7 @@ async def _receipt_pdf(db: AsyncSession, user: User, receipt: Receipt) -> bytes:
 
 async def export_receipt(db: AsyncSession, user: User, receipt: Receipt, fmt: ExportFormat) -> ExportFile:
     pdf = await _receipt_pdf(db, user, receipt)
-    body = pdf if fmt == "pdf" else render_service.pdf_to_png(pdf)
+    body = pdf if fmt == "pdf" else await render_service.pdf_to_png_async(pdf)
     return ExportFile(body, MEDIA_TYPES[fmt], f"receipt-{_safe_filename(receipt.receipt_number)}.{fmt}")
 
 
@@ -116,6 +116,6 @@ async def preview(
     html, _ = render_service.build_html(canvas_json, content, assets)
     if fmt == "html":
         return ExportFile(html.encode("utf-8"), MEDIA_TYPES["html"], "preview.html")
-    pdf = render_service.render_pdf(html)
-    body = pdf if fmt == "pdf" else render_service.pdf_to_png(pdf)
+    pdf = await render_service.render_pdf_async(html)
+    body = pdf if fmt == "pdf" else await render_service.pdf_to_png_async(pdf)
     return ExportFile(body, MEDIA_TYPES[fmt], f"preview.{fmt}")

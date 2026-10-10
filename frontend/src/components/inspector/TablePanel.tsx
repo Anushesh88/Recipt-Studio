@@ -8,6 +8,7 @@ import {
   COLUMN_WIDTH_PRECISION,
   FONT_SIZE_RANGE,
   ITEM_COLUMN_KEYS,
+  LABEL_MAX_LENGTH,
   LINE_HEIGHT_RANGE,
   PERCENT,
   ROW_PADDING_RANGE,
@@ -75,7 +76,7 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
               <div className="flex items-end gap-2">
                 <div className="flex-1 space-y-1.5">
                   <label htmlFor={`col-label-${col.key}`} className="text-xs font-medium">Header</label>
-                  <Input id={`col-label-${col.key}`} value={col.label} className="h-8" onChange={(e) => updateColumn(i, { label: e.target.value })} />
+                  <Input id={`col-label-${col.key}`} value={col.label} maxLength={LABEL_MAX_LENGTH} className="h-8" onChange={(e) => updateColumn(i, { label: e.target.value })} />
                 </div>
                 <div className="w-24">
                   <NumberField

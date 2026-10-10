@@ -86,8 +86,13 @@ receipt-studio/
 9. On POST /receipts, extract the variables used in the template and reject the
    request if any required variable has no value (422 with field names).
 10. Layout (auto-height / push-down) is computed in `layout_service` before
-    rendering, using the algorithm in the Data Schema doc.
+    rendering, using the algorithm in the Data Schema doc. WeasyPrint / PyMuPDF
+    are synchronous, so they run on a worker thread (render_service
+    render_pdf_async / pdf_to_png_async), never on the event loop.
 11. Type hints required; ruff + mypy must pass.
+12. SECRET_KEY: the built-in dev key is public, so it's only accepted with
+    APP_ENV=development (the default). The Docker image runs as production and
+    refuses to start without a key of at least 32 characters.
 
 ## Frontend Rules
 1. Canvas state lives ONLY in `editorStore`. Components never hold element

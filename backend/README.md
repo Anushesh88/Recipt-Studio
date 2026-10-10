@@ -15,6 +15,14 @@ uv pip install -e ".[dev]"
 The default database is SQLite (`receipt.db`); set `DATABASE_URL` for Postgres
 (see `docker-compose.yml`).
 
+Login tokens are signed with `SECRET_KEY`. The built-in one is public, so it only
+works with `APP_ENV=development` (the default). Anywhere else set
+`APP_ENV=production` and a random key of at least 32 characters:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
 ### PDF rendering (WeasyPrint system libraries)
 
 WeasyPrint needs GTK/Pango. The Docker image installs them; locally:

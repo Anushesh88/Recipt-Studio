@@ -193,3 +193,34 @@ async def test_receipts_and_templates_are_private(client: AsyncClient, login: Lo
     assert (await create(client, other, template_id, receipt_data())).status_code == 404
     assert (await client.get(f"/receipts/{receipt['id']}", headers=other)).status_code == 404
     assert (await client.get("/receipts", headers=other)).json() == []
+
+
+async def test_qr_codes_that_overflow_once_filled_in_are_422(client: AsyncClient, login: Login) -> None:
+    headers = await login("owner@example.com")
+    qr = {"id": "qr", "type": "qr", "x": 12, "y": 200, "width": 90, "height": 90, "zIndex": 4, "locked": False,
+          "props": {"content": "{{custom.a}}{{custom.b}}{{custom.c}}", "errorCorrection": "H"}}
+    template_id = await make_template(client, headers, qr)
+
+    # 1500 characters, but an H-level QR code holds 1273
+    response = await create(client, headers, template_id, receipt_data(custom={k: "x" * 500 for k in "abc"}))
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail["code"] == "QR_CONTENT_TOO_LONG"
+    assert detail["fields"] == ["custom.a", "custom.b", "custom.c"]
+    assert "at most 1273 characters" in detail["message"]
+    # The refused receipt gave its number back
+    assert (await client.get("/receipts/next-number", headers=headers)).json()["next_number"] == "R-0001"
+
+    ok = await create(client, headers, template_id, receipt_data(custom={k: "x" * 400 for k in "abc"}))
+    assert ok.status_code == 201, ok.text
+    assert ok.json()["receipt_number"] == "R-0001"
+
+
+async def test_totals_above_what_the_database_can_store_are_422(client: AsyncClient, login: Login) -> None:
+    headers = await login("owner@example.com")
+    template_id = await make_template(client, headers)
+    huge = [{"description": "Gold", "qty": "1000000", "unit_price": "10000.00"}]
+    response = await create(client, headers, template_id, receipt_data(items=huge))
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "AMOUNT_TOO_LARGE"
+    assert response.json()["detail"]["fields"] == ["items"]

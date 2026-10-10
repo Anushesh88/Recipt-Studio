@@ -4,6 +4,7 @@ import { applyLayout, CONTENT_OVERFLOW } from "../../lib/layout";
 import type { VariableValues } from "../../lib/variables";
 import { useAssetUrl } from "../../api/assets";
 import { DividerEl, ImageEl, QrEl, SignatureEl, TableEl, TextEl, TotalsEl } from "../elements";
+import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
 import type { TableRow } from "../elements/TableEl";
 import type { TotalsValues } from "../elements/TotalsEl";
 
@@ -70,7 +71,9 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
           }}
         >
           {layout.elements.map((element) => (
-            <PreviewElement key={element.id} element={element} values={values} rows={rows} totals={totals} />
+            <ElementErrorBoundary key={element.id} element={element}>
+              <PreviewElement element={element} values={values} rows={rows} totals={totals} />
+            </ElementErrorBoundary>
           ))}
         </div>
       </div>

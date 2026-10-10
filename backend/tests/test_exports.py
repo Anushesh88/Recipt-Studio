@@ -1,5 +1,7 @@
 """PDF / PNG export, previews, and their limits (Phase 5)."""
+import asyncio
 import base64
+import time
 from collections.abc import Awaitable, Callable, Iterator
 from pathlib import Path
 from typing import Any
@@ -253,3 +255,35 @@ async def test_missing_renderer_is_a_clear_503(client: AsyncClient, login: Login
     )
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "RENDERER_UNAVAILABLE"
+
+
+async def test_preview_of_an_overfull_qr_code_is_422(client: AsyncClient, login: Login) -> None:
+    headers = await login("owner@example.com")
+    qr = {"id": "qr", "type": "qr", "x": 12, "y": 200, "width": 90, "height": 90, "zIndex": 4, "locked": False,
+          "props": {"content": "{{custom.a}}{{custom.b}}{{custom.c}}", "errorCorrection": "H"}}
+    data = receipt_data(1, custom={k: "x" * 500 for k in "abc"})
+    response = await client.post("/preview", headers=headers, json={"canvas": canvas(qr), "data": data, "format": "html"})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "QR_CONTENT_TOO_LONG"
+
+
+async def test_rendering_does_not_hold_up_other_requests(
+    client: AsyncClient, login: Login, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    headers = await login("owner@example.com")
+
+    def slow_render(html: str) -> bytes:
+        time.sleep(0.6)  # a big receipt
+        return b"%PDF-1.7 fake"
+
+    monkeypatch.setattr(render_service, "render_pdf", slow_render)
+    request = {"canvas": standard_canvas(), "data": receipt_data(1), "format": "pdf"}
+    started = time.perf_counter()
+    render = asyncio.create_task(client.post("/preview", headers=headers, json=request))
+    await asyncio.sleep(0.1)  # the render is under way
+
+    assert (await client.get("/health")).status_code == 200
+    # Timed from the start: a render on the event loop would hold this for 0.6 s
+    assert time.perf_counter() - started < 0.45, "/health waited for the render"
+    assert not render.done()
+    assert (await render).status_code == 200

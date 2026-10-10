@@ -1,78 +1,101 @@
 import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuthStore } from '../store/authStore';
-import { apiClient } from '../api/client';
+import { apiClient, apiErrorMessage } from '../api/client';
+import { utf8ByteLength } from '../lib/text';
+import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from '../lib/units';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isRegister, setIsRegister] = useState(false);
+const email = z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address'));
+
+const signInSchema = z.object({
+  email,
+  password: z.string().min(1, 'Enter your password'),
+});
+
+// Same rules as the backend's UserCreate
+const registerSchema = z.object({
+  email,
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
+    .refine((p) => utf8ByteLength(p) <= PASSWORD_MAX_BYTES, `Use at most ${PASSWORD_MAX_BYTES} characters`),
+});
+
+type Credentials = z.infer<typeof signInSchema>;
+
+function CredentialsForm({ isRegister }: { isRegister: boolean }) {
   const setToken = useAuthStore((state) => state.setToken);
+  const [error, setError] = useState<string | null>(null);
+  const { register, handleSubmit, formState } = useForm<Credentials>({
+    resolver: zodResolver(isRegister ? registerSchema : signInSchema),
+    defaultValues: { email: '', password: '' },
+  });
+  const { errors, isSubmitting } = formState;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  const onSubmit = async ({ email, password }: Credentials) => {
+    setError(null);
     try {
       if (isRegister) {
         await apiClient.post('/auth/register', { email, password });
       }
-      const params = new URLSearchParams();
-      params.append('username', email);
-      params.append('password', password);
-      
+      const params = new URLSearchParams({ username: email, password });
       const res = await apiClient.post('/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       });
       setToken(res.data.access_token);
-    } catch (err: unknown) {
-      const axiosErr = err as { response?: { data?: { detail?: unknown } } };
-      if (axiosErr.response?.data?.detail) {
-        const detail = axiosErr.response.data.detail;
-        if (Array.isArray(detail)) {
-          setError(detail.map((d: { msg?: string }) => d.msg || '').join(', '));
-        } else if (typeof detail === 'string') {
-          setError(detail);
-        } else {
-          setError('An error occurred');
-        }
-      } else {
-        setError('An error occurred');
-      }
+    } catch (e) {
+      setError(apiErrorMessage(e, isRegister ? "Couldn't create your account." : "Couldn't sign you in."));
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-96">
-        <h1 className="text-2xl font-bold mb-4">{isRegister ? 'Register' : 'Login'}</h1>
-        {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <input
-            type="email"
-            placeholder="Email"
-            className="border p-2 rounded"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            className="border p-2 rounded"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button type="submit" className="bg-blue-500 text-white p-2 rounded font-semibold">
-            {isRegister ? 'Sign Up' : 'Sign In'}
-          </button>
-        </form>
-        <button
-          className="text-blue-500 mt-4 text-sm hover:underline"
-          onClick={() => setIsRegister(!isRegister)}
-        >
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      <div className="space-y-1.5">
+        <Label htmlFor="login-email">Email</Label>
+        <Input id="login-email" type="email" autoComplete="email" placeholder="Email" aria-invalid={Boolean(errors.email)} {...register('email')} />
+        {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="login-password">Password</Label>
+        <Input
+          id="login-password"
+          type="password"
+          autoComplete={isRegister ? 'new-password' : 'current-password'}
+          placeholder="Password"
+          aria-invalid={Boolean(errors.password)}
+          {...register('password')}
+        />
+        {errors.password ? (
+          <p className="text-xs text-destructive">{errors.password.message}</p>
+        ) : (
+          isRegister && <p className="text-xs text-muted-foreground">At least {PASSWORD_MIN_LENGTH} characters.</p>
+        )}
+      </div>
+      <Button type="submit" disabled={isSubmitting}>
+        {isSubmitting ? (isRegister ? 'Creating account…' : 'Signing in…') : isRegister ? 'Sign Up' : 'Sign In'}
+      </Button>
+    </form>
+  );
+}
+
+export default function Login() {
+  const [isRegister, setIsRegister] = useState(false);
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+      <div className="w-full max-w-sm rounded-lg border border-border bg-white p-8 shadow-sm">
+        <h1 className="mb-4 text-2xl font-bold">{isRegister ? 'Register' : 'Login'}</h1>
+        {/* keyed so switching modes starts a fresh form with the right rules */}
+        <CredentialsForm key={isRegister ? 'register' : 'login'} isRegister={isRegister} />
+        <Button type="button" variant="link" className="mt-4 h-auto p-0" onClick={() => setIsRegister(!isRegister)}>
           {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -10,6 +10,12 @@ from app.services import layout_service, totals_service, variables_service
 
 FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
+# Error codes in totals_cases.json -> the exception totals_service raises
+TOTALS_ERRORS: dict[str, type[Exception]] = {
+    "DISCOUNT_TOO_LARGE": totals_service.DiscountTooLargeError,
+    "AMOUNT_TOO_LARGE": totals_service.AmountTooLargeError,
+}
+
 
 def load(name: str) -> dict[str, Any]:
     path = FIXTURES / name
@@ -43,7 +49,7 @@ def test_totals() -> None:
         ]
         tax_rate, discount = Decimal(case["tax_rate"]), Decimal(case["discount"])
         if "error" in case:
-            with pytest.raises(totals_service.DiscountTooLargeError):
+            with pytest.raises(TOTALS_ERRORS[case["error"]]):
                 totals_service.compute_totals(items, tax_rate, discount)
             continue
         result = totals_service.compute_totals(items, tax_rate, discount)

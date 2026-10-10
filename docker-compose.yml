@@ -27,7 +27,10 @@ services:
       - ./backend:/app
     environment:
       - DATABASE_URL=postgresql+asyncpg://receipt_user:receipt_password@db/receipt_db
-      - SECRET_KEY=supersecretkey-dev
+      # Local development only: the dev SECRET_KEY is public. The image itself
+      # runs as production and needs a real one
+      - APP_ENV=development
+      - SECRET_KEY=${SECRET_KEY:-supersecretkey-dev}
     depends_on:
       db:
         condition: service_healthy

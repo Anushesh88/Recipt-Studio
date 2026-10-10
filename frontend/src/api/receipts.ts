@@ -79,6 +79,22 @@ export interface ReceiptApiError {
   fields: string[];
 }
 
+// FastAPI's own request validation errors, as form field paths:
+// {loc: ["body", "data", "items", 0, "qty"], msg} -> {field: "items.0.qty", message}
+const FORM_FIELD_FOR: Record<string, string> = { tax_rate: "tax_percent" };
+
+export function requestFieldErrors(error: unknown): { field: string; message: string }[] {
+  if (!axios.isAxiosError(error) || error.response?.status !== 422) return [];
+  const detail: unknown = error.response.data?.detail;
+  if (!Array.isArray(detail)) return [];
+  return detail.flatMap((d: { loc?: unknown[]; msg?: unknown }) => {
+    const loc = d.loc ?? [];
+    if (loc[0] !== "body" || loc[1] !== "data" || loc.length < 3) return [];
+    const field = loc.slice(2).join(".");
+    return [{ field: FORM_FIELD_FOR[field] ?? field, message: typeof d.msg === "string" ? d.msg : "Invalid value" }];
+  });
+}
+
 export function receiptApiError(error: unknown): ReceiptApiError | null {
   if (!axios.isAxiosError(error)) return null;
   const detail: unknown = error.response?.data?.detail;

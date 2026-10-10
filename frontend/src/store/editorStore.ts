@@ -65,19 +65,19 @@ interface Geometry {
 //   isn't silently resized by a move.
 // - Position bounds are floored to the grid, so a snapped position can never land
 //   past an edge (page sizes like 302px aren't grid multiples).
-// - The bottom edge only applies to fixed-height pages; auto pages grow.
+// - Fixed pages end at their height. Auto-height pages end at the largest design
+//   height, and their design height grows to fit (fitAutoPage).
 const fitGeometry = (page: Canvas["page"], current: Geometry, change: Partial<Geometry>): Geometry => {
   const snapSize = (v: number) => Math.max(MIN_ELEMENT_SIZE, snapToGrid(v, GRID_SIZE));
-  const fixedHeight = page.heightMode === "fixed";
+  const bottom = pageBottomLimit(page);
 
   const width = Math.min(change.width !== undefined ? snapSize(change.width) : current.width, page.width);
-  let height = change.height !== undefined ? snapSize(change.height) : current.height;
-  if (fixedHeight) height = Math.min(height, page.height);
+  const height = Math.min(change.height !== undefined ? snapSize(change.height) : current.height, bottom);
 
   let x = Math.max(0, change.x !== undefined ? snapToGrid(change.x, GRID_SIZE) : current.x);
   let y = Math.max(0, change.y !== undefined ? snapToGrid(change.y, GRID_SIZE) : current.y);
   x = Math.min(x, maxGridPosition(page.width, width, GRID_SIZE));
-  if (fixedHeight) y = Math.min(y, maxGridPosition(page.height, height, GRID_SIZE));
+  y = Math.min(y, maxGridPosition(bottom, height, GRID_SIZE));
 
   return { x, y, width, height };
 };
@@ -102,6 +102,21 @@ const normalizeElement = (page: Canvas["page"], el: CanvasElement) => {
 // Lowest element edge, rounded up to the grid
 const contentBottom = (elements: CanvasElement[]) =>
   Math.ceil(Math.max(0, ...elements.map((e) => e.y + e.height)) / GRID_SIZE) * GRID_SIZE;
+
+// How far down elements may go
+const pageBottomLimit = (page: Canvas["page"]) => (page.heightMode === "fixed" ? page.height : MAX_DESIGN_HEIGHT);
+
+// An auto-height page's design height, grown to fit its elements: anything below
+// it would be cut off in the preview and the PDF
+const fittedPageHeight = (page: Canvas["page"], elements: CanvasElement[]) =>
+  page.heightMode === "auto"
+    ? Math.max(page.height, Math.min(MAX_DESIGN_HEIGHT, contentBottom(elements)))
+    : page.height;
+
+const fitAutoPage = (draft: { page: Canvas["page"]; elements: CanvasElement[] }) => {
+  const height = fittedPageHeight(draft.page, draft.elements);
+  if (height !== draft.page.height) draft.page.height = height;
+};
 
 // zIndex is informational; keep it mirroring the array (paint) order
 const renumberZIndex = (elements: CanvasElement[]) => {
@@ -150,6 +165,7 @@ export const useEditorStore = create<EditorState>()(
           saveSnapshot(draft);
           draft.elements.push(el);
           renumberZIndex(draft.elements);
+          fitAutoPage(draft);
           draft.selectedId = el.id;
         }),
 
@@ -160,6 +176,7 @@ export const useEditorStore = create<EditorState>()(
             saveSnapshot(draft, options?.coalesceKey);
             updater(el);
             normalizeElement(draft.page, el);
+            fitAutoPage(draft);
           }
         }),
 
@@ -169,6 +186,7 @@ export const useEditorStore = create<EditorState>()(
           if (el) {
             saveSnapshot(draft);
             applyGeometry(el, fitGeometry(draft.page, el, { x, y }));
+            fitAutoPage(draft);
           }
         }),
 
@@ -180,12 +198,13 @@ export const useEditorStore = create<EditorState>()(
             // A resize keeps the position and caps the size at the page edge
             const page = draft.page;
             const maxWidth = floorToGrid(page.width - el.x, GRID_SIZE);
-            const maxHeight = page.heightMode === "fixed" ? floorToGrid(page.height - el.y, GRID_SIZE) : Infinity;
+            const maxHeight = floorToGrid(pageBottomLimit(page) - el.y, GRID_SIZE);
             applyGeometry(el, fitGeometry(page, el, {
               width: Math.min(width, maxWidth),
               // the items table's height is derived from its rows
               height: el.type === "items_table" ? undefined : Math.min(height, maxHeight),
             }));
+            fitAutoPage(draft);
           }
         }),
 
@@ -197,6 +216,7 @@ export const useEditorStore = create<EditorState>()(
             // the items table's height is derived from its rows
             const change = el.type === "items_table" ? { ...geometry, height: undefined } : geometry;
             applyGeometry(el, fitGeometry(draft.page, el, change));
+            fitAutoPage(draft);
           }
         }),
 
@@ -242,7 +262,9 @@ export const useEditorStore = create<EditorState>()(
           draft.past = [];
           draft.future = [];
           draft.lastCoalesceKey = null;
-          draft.page = canvas.page;
+          // Templates saved before pages grew to fit could have elements below the page
+          const height = fittedPageHeight(canvas.page, canvas.elements);
+          draft.page = height === canvas.page.height ? canvas.page : { ...canvas.page, height };
           draft.elements = canvas.elements;
           draft.selectedId = null;
           draft.editingId = null;
@@ -253,13 +275,11 @@ export const useEditorStore = create<EditorState>()(
           if (draft.page.preset === preset) return;
           saveSnapshot(draft);
           const next: Canvas["page"] = { ...PAGE_PRESETS[preset], background: draft.page.background };
-          if (next.heightMode === "auto") {
-            // Thermal pages grow, so keep every element visible rather than squashing them
-            next.height = Math.max(next.height, contentBottom(draft.elements));
-          }
           draft.page = next;
-          // Fixed pages pull elements back inside; narrower pages cap widths
+          // Fixed pages pull elements back inside; narrower pages cap widths.
+          // Thermal pages grow instead, keeping every element rather than squashing them
           draft.elements.forEach((el) => normalizeElement(next, el));
+          fitAutoPage(draft);
         }),
 
       updatePage: (changes) =>

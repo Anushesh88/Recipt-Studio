@@ -234,6 +234,34 @@ describe("editorStore", () => {
     expect(useEditorStore.getState().page).toMatchObject({ height: 1123, background: "#FFF8E7" });
   });
 
+  it("a thermal page grows to fit an element moved or sized below it", () => {
+    useEditorStore.getState().addElement(getDummyText()); // 400px design height
+    useEditorStore.getState().updateElementGeometry("test-text", { y: 1000 });
+    let { page, elements } = useEditorStore.getState();
+    expect(elements[0].y).toBe(1000);
+    expect(page.height).toBe(1052); // bottom at 1050, rounded up to the grid
+
+    // never past the largest design height
+    useEditorStore.getState().updateElementGeometry("test-text", { y: 99999, height: 99999 });
+    ({ page, elements } = useEditorStore.getState());
+    expect(elements[0].y + elements[0].height).toBeLessThanOrEqual(MAX_DESIGN_HEIGHT);
+    expect(page.height).toBe(MAX_DESIGN_HEIGHT);
+
+    // one undo step takes back both the move and the growth
+    useEditorStore.getState().undo();
+    expect(useEditorStore.getState().page.height).toBe(1052);
+  });
+
+  it("loading a template with an element below its thermal page grows the page", () => {
+    useEditorStore.getState().loadTemplate({
+      schemaVersion: 1,
+      page: PAGE_PRESETS.thermal80,
+      elements: [{ ...getDummyText(), y: 1000 }],
+    });
+    expect(useEditorStore.getState().page.height).toBe(1052);
+    expect(PAGE_PRESETS.thermal80.height).toBe(400); // the loaded canvas isn't mutated
+  });
+
   it("selecting another element ends inline editing", () => {
     useEditorStore.getState().addElement(getDummyText());
     useEditorStore.getState().addElement({ ...getDummyText(), id: "other" });

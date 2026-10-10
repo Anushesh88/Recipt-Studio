@@ -2,7 +2,7 @@
 from datetime import timedelta
 
 from jose import JWTError, jwt
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -16,14 +16,16 @@ class EmailTakenError(Exception):
 
 
 async def get_user_by_email(db: AsyncSession, email: str) -> User | None:
-    result = await db.execute(select(User).where(User.email == email))
+    """Case-insensitive, so "Jane@Example.com" signs in to jane@example.com
+    (accounts made before emails were stored lowercase included)."""
+    result = await db.execute(select(User).where(func.lower(User.email) == email.strip().lower()))
     return result.scalars().first()
 
 
 async def register_user(db: AsyncSession, email: str, password: str) -> User:
     if await get_user_by_email(db, email):
         raise EmailTakenError
-    user = User(email=email, password_hash=get_password_hash(password))
+    user = User(email=email.strip().lower(), password_hash=get_password_hash(password))
     db.add(user)
     await db.commit()
     await db.refresh(user)

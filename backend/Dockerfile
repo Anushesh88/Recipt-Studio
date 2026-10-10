@@ -21,5 +21,9 @@ RUN uv pip install --system -e .[dev]
 
 COPY . .
 
+# A real deployment: refuses to start without a SECRET_KEY of its own
+# (docker-compose.yml switches back to development for local use)
+ENV APP_ENV=production
+
 # Bring the database schema up to date, then serve
 CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

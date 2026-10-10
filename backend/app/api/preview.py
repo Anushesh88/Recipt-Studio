@@ -5,9 +5,11 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.rendering import (
+    amount_too_large_error,
     api_error,
     file_response,
     overflow_error,
+    qr_too_long_error,
     rate_limited_user,
     renderer_unavailable_error,
 )
@@ -15,7 +17,7 @@ from app.core.db import get_db
 from app.models.user import User
 from app.schemas.canvas import Canvas
 from app.schemas.receipt import ReceiptDataIn
-from app.services import export_service, render_service, totals_service
+from app.services import export_service, qr_service, render_service, totals_service
 
 router = APIRouter()
 
@@ -42,8 +44,12 @@ async def preview(
         export = await export_service.preview(db, current_user, body.canvas, body.data, body.format)
     except totals_service.DiscountTooLargeError as e:
         raise api_error(status.HTTP_422_UNPROCESSABLE_CONTENT, "DISCOUNT_TOO_LARGE", str(e), ["discount"]) from None
+    except totals_service.AmountTooLargeError as e:
+        raise amount_too_large_error(e) from None
     except render_service.ContentOverflowError as e:
         raise overflow_error(e.preset) from None
+    except qr_service.QrContentTooLongError as e:
+        raise qr_too_long_error(e) from None
     except render_service.RendererUnavailableError:
         raise renderer_unavailable_error() from None
     return file_response(export, download=False)

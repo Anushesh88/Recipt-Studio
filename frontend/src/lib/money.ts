@@ -4,8 +4,9 @@
 // both are checked against shared/fixtures/totals_cases.json.
 //   line_total = round(qty * unit_price); subtotal = sum; taxable = subtotal - discount
 //   tax = round(taxable * tax_rate); total = taxable + tax   (round = half-up to cents)
+// The subtotal and total may not exceed MAX_AMOUNT (receipts.total_amount NUMERIC(12, 2)).
 
-import { MONEY_DECIMAL_PLACES as CENT_SCALE } from "./units";
+import { MAX_AMOUNT, MONEY_DECIMAL_PLACES as CENT_SCALE } from "./units";
 
 const DECIMAL = /^\d+(\.\d+)?$/;
 
@@ -61,7 +62,7 @@ export interface Totals {
 
 export type TotalsResult =
   | { ok: true; totals: Totals }
-  | { ok: false; error: "INVALID_NUMBER" | "DISCOUNT_TOO_LARGE" };
+  | { ok: false; error: "INVALID_NUMBER" | "DISCOUNT_TOO_LARGE" | "AMOUNT_TOO_LARGE" };
 
 export function computeTotals(items: MoneyLine[], taxRate: string, discount: string): TotalsResult {
   const lines = items.map((i) => [parseDecimal(i.qty), parseDecimal(i.unit_price)] as const);
@@ -75,6 +76,8 @@ export function computeTotals(items: MoneyLine[], taxRate: string, discount: str
   if (discountCents > subtotal) return { ok: false, error: "DISCOUNT_TOO_LARGE" };
   const taxable = subtotal - discountCents;
   const tax = toCents(multiply({ units: taxable, scale: CENT_SCALE }, rate));
+  const maxCents = toCents(parseDecimal(MAX_AMOUNT)!);
+  if (subtotal > maxCents || taxable + tax > maxCents) return { ok: false, error: "AMOUNT_TOO_LARGE" };
 
   return {
     ok: true,

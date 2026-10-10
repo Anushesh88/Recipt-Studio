@@ -10,11 +10,13 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
 
+from app.services.totals_service import MAX_AMOUNT
+
 from .canvas import Canvas
 from .common import UtcDatetime
 
 # NUMERIC(12, 2)
-MAX_MONEY = Decimal("9999999999.99")
+MAX_MONEY = MAX_AMOUNT
 MAX_LINE_ITEMS = 200
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=200)]

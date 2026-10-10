@@ -80,7 +80,11 @@ export const ElementInspector: React.FC<{ element: CanvasElement }> = ({ element
           />
         </div>
         {heightHint && <p className="text-xs text-muted-foreground">{heightHint}</p>}
-        <p className="text-xs text-muted-foreground">Values snap to the 4 px grid and stay inside the page.</p>
+        <p className="text-xs text-muted-foreground">
+          {page.heightMode === "fixed"
+            ? "Values snap to the 4 px grid and stay inside the page."
+            : "Values snap to the 4 px grid; the page grows to fit."}
+        </p>
         <CheckboxField
           id="geom-locked"
           label="Lock position and size"

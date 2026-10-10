@@ -14,7 +14,7 @@ describe("Canvas Schema", () => {
     id: `table_${idSuffix}`, type: "items_table" as const, x: 10, y: 50, width: 280, height: 100, zIndex: 2, locked: false,
     props: {
       binding: "receipt.items" as const,
-      columns: [{ key: "desc", label: "Desc", width: 1.0, align: "left" as const }],
+      columns: [{ key: "description", label: "Desc", width: 1.0, align: "left" as const }],
       fontFamily: "Inter", fontSize: 12, lineHeight: 1.3, rowPadding: 4, headerBold: true, rowDivider: true, color: "#000000"
     }
   });
@@ -113,6 +113,50 @@ describe("Canvas Schema", () => {
       schemaVersion: 1, page: validPage,
       elements: [{ ...validText, props: { ...validText.props, fontFamily: "Comic Sans MS" } }],
     }).success).toBe(false);
+  });
+
+  describe("limits mirrored from the backend", () => {
+    const table = validItemsTable();
+    const base = () => ({ schemaVersion: 1, page: validPage, elements: [validText, table] });
+    const valid = (input: unknown) => canvasSchema.safeParse(input).success;
+
+    it.each([
+      ["line height", { elements: [{ ...validText, props: { ...validText.props, lineHeight: -5 } }] }],
+      ["font weight", { elements: [{ ...validText, props: { ...validText.props, fontWeight: 123456 } }] }],
+      ["y past the largest design height", { elements: [{ ...validText, y: 3001 }] }],
+      ["empty id", { elements: [{ ...validText, id: "" }] }],
+      ["row padding", { elements: [{ ...table, props: { ...table.props, rowPadding: -40 } }] }],
+      ["no columns", { elements: [{ ...table, props: { ...table.props, columns: [] } }] }],
+      ["unknown column field", { elements: [{ ...table, props: { ...table.props, columns: [{ key: "nope", label: "X", width: 1, align: "left" }] } }] }],
+      ["negative column width", { elements: [{ ...table, props: { ...table.props, columns: [{ key: "qty", label: "Q", width: -3, align: "left" }] } }] }],
+      ["duplicate column field", { elements: [{ ...table, props: { ...table.props, columns: [
+        { key: "qty", label: "Q", width: 0.5, align: "left" }, { key: "qty", label: "Q2", width: 0.5, align: "left" },
+      ] } }] }],
+      ["huge page", { page: { ...validPage, height: 10_000_000 } }],
+      ["page width off the preset", { page: { ...validPage, width: 5000 } }],
+      ["wrong height mode for the preset", { page: { ...validPage, heightMode: "fixed" } }],
+      ["huge margin", { page: { ...validPage, margin: 99999 } }],
+      ["infinite y", { elements: [{ ...validText, y: Infinity }] }],
+      ["asset id that isn't a uuid", { elements: [{ id: "logo", type: "image", x: 0, y: 0, width: 100, height: 40, props: { source: "logo", assetId: "nope", fit: "contain" } }] }],
+    ])("rejects %s", (_name, change) => {
+      expect(valid(base())).toBe(true);
+      expect(valid({ ...base(), ...change })).toBe(false);
+    });
+
+    it("A4 and A5 pages keep their preset size", () => {
+      const a4 = { preset: "a4" as const, width: 794, height: 1123, heightMode: "fixed" as const, background: "#FFFFFF", margin: 32 };
+      expect(valid({ schemaVersion: 1, page: a4, elements: [] })).toBe(true);
+      expect(messages({ schemaVersion: 1, page: { ...a4, height: 2000 }, elements: [] })).toContain("A a4 page is 1123px tall");
+    });
+
+    it.each([["L", 2953], ["M", 2331], ["Q", 1663], ["H", 1273]] as const)("QR content fits a level-%s code (%i bytes)", (level, capacity) => {
+      const qr = (content: string) => ({ schemaVersion: 1, page: validPage, elements: [
+        { id: "qr", type: "qr", x: 0, y: 0, width: 100, height: 100, props: { content, errorCorrection: level } },
+      ] });
+      expect(valid(qr("x".repeat(capacity)))).toBe(true);
+      expect(messages(qr("x".repeat(capacity + 1))).some((m) => m.startsWith("Too much text for a QR code"))).toBe(true);
+      expect(valid(qr("₹".repeat(Math.floor(capacity / 3) + 1)))).toBe(false); // 3 bytes each
+    });
   });
 
   it("should reject templates over 256 KB", () => {

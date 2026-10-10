@@ -4,11 +4,30 @@
 import { z } from "zod";
 import type { Canvas } from "../../schema/templateSchema";
 import type { ReceiptDataInput, ReceiptRecord } from "../../api/receipts";
-import { CUSTOM_PREFIX, extractVariables, variableKind, variableLabel, type VariableValues } from "../../lib/variables";
+import {
+  CUSTOM_PREFIX,
+  extractVariables,
+  findVariables,
+  resolveVariables,
+  variableKind,
+  variableLabel,
+  type VariableValues,
+} from "../../lib/variables";
 import { computeTotals, percentToFraction, type Totals } from "../../lib/money";
+import { qrFits } from "../../lib/qr";
 import type { TableRow } from "../elements/TableEl";
 import type { TotalsValues } from "../elements/TotalsEl";
-import { DEFAULT_CURRENCY, MAX_LINE_ITEMS, NOTES_MAX_LENGTH, RECEIPT_NUMBER_MAX_LENGTH } from "../../lib/units";
+import {
+  CUSTOM_VALUE_MAX_LENGTH,
+  DEFAULT_CURRENCY,
+  MAX_AMOUNT,
+  MAX_LINE_ITEMS,
+  MAX_QTY,
+  NOTES_MAX_LENGTH,
+  PAYMENT_METHOD_MAX_LENGTH,
+  RECEIPT_NUMBER_MAX_LENGTH,
+  SHORT_TEXT_MAX_LENGTH,
+} from "../../lib/units";
 
 
 export interface LineItemValues {
@@ -41,6 +60,15 @@ export type BuiltinField = (typeof BUILTIN_FIELDS)[number];
 
 const OPTIONAL_FIELDS = new Set<string>(["receipt.notes"]); // backend OPTIONAL_VARIABLES
 
+// Longest value the server takes for each text field (backend schemas/receipt.py)
+export const FIELD_MAX_LENGTH: Record<string, number> = {
+  "business.name": SHORT_TEXT_MAX_LENGTH,
+  "customer.name": SHORT_TEXT_MAX_LENGTH,
+  "receipt.payment_method": PAYMENT_METHOD_MAX_LENGTH,
+  "receipt.notes": NOTES_MAX_LENGTH,
+  "receipt.number": RECEIPT_NUMBER_MAX_LENGTH,
+};
+
 export interface FormModel {
   builtinFields: BuiltinField[];
   customKeys: string[]; // without the "custom." prefix
@@ -54,7 +82,28 @@ const PERCENT = /^\d+(\.\d{1,2})?$/;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const CURRENCY = /^[A-Za-z]{3}$/;
 
-const required = (label: string) => z.string().trim().min(1, `${label} is required`);
+const atMost = (max: number) => [max, `Use at most ${max} characters`] as const;
+const required = (label: string, max: number) => z.string().trim().min(1, `${label} is required`).max(...atMost(max));
+
+const formatAmount = (amount: string) => Number(amount).toLocaleString("en-US", { minimumFractionDigits: 2 });
+const withinMaxAmount = (v: string) => Number(v) <= Number(MAX_AMOUNT);
+const AMOUNT_LIMIT_MESSAGE = `At most ${formatAmount(MAX_AMOUNT)}`;
+const TOTAL_LIMIT_MESSAGE = `The total can't be more than ${formatAmount(MAX_AMOUNT)}`;
+
+// The form's values as variable values (used by the preview and the QR check)
+function formVariableValues(values: GenerateValues, receiptNumber: string): VariableValues {
+  return {
+    "business.name": values.business?.name ?? "",
+    "customer.name": values.customer?.name ?? "",
+    "customer.email": values.customer?.email ?? "",
+    "receipt.number": receiptNumber,
+    "receipt.date": values.receipt?.date ?? "",
+    "receipt.payment_method": values.receipt?.payment_method ?? "",
+    "receipt.currency": (values.receipt?.currency ?? "").toUpperCase(),
+    "receipt.notes": values.receipt?.notes ?? "",
+    ...Object.fromEntries(Object.entries(values.custom ?? {}).map(([k, v]) => [CUSTOM_PREFIX + k, v])),
+  };
+}
 
 const today = () => {
   const d = new Date();
@@ -70,8 +119,12 @@ export function buildFormModel(canvas: Canvas): FormModel {
   const builtinFields = BUILTIN_FIELDS.filter((key) => usedSet.has(key));
   const customKeys = used.filter((key) => variableKind(key) === "custom").map((key) => key.slice(CUSTOM_PREFIX.length));
 
+  const maxLength = (key: string) => FIELD_MAX_LENGTH[key] ?? SHORT_TEXT_MAX_LENGTH;
   const field = (key: BuiltinField) =>
-    usedSet.has(key) && !OPTIONAL_FIELDS.has(key) ? required(variableLabel(key)) : z.string();
+    usedSet.has(key) && !OPTIONAL_FIELDS.has(key)
+      ? required(variableLabel(key), maxLength(key))
+      : z.string().max(...atMost(maxLength(key)));
+  const qrCodes = canvas.elements.filter((e) => e.type === "qr");
 
   const schema = z
     .object({
@@ -79,35 +132,54 @@ export function buildFormModel(canvas: Canvas): FormModel {
       customer: z.object({
         name: field("customer.name"),
         email: usedSet.has("customer.email")
-          ? required("Customer email").pipe(z.email("Enter a valid email address"))
+          ? required("Customer email", SHORT_TEXT_MAX_LENGTH).pipe(z.email("Enter a valid email address"))
           : z.string(),
       }),
       receipt: z.object({
-        number: z.string().trim().max(RECEIPT_NUMBER_MAX_LENGTH, `Use at most ${RECEIPT_NUMBER_MAX_LENGTH} characters`),
+        number: z.string().trim().max(...atMost(RECEIPT_NUMBER_MAX_LENGTH)),
         date: usedSet.has("receipt.date")
-          ? required("Receipt date").regex(ISO_DATE, "Pick a date")
+          ? required("Receipt date", SHORT_TEXT_MAX_LENGTH).regex(ISO_DATE, "Pick a date")
           : z.string(),
         payment_method: field("receipt.payment_method"),
         currency: z.string().trim().regex(CURRENCY, "Use a 3-letter currency code, e.g. USD"),
-        notes: z.string().max(NOTES_MAX_LENGTH, `Use at most ${NOTES_MAX_LENGTH} characters`),
+        notes: z.string().max(...atMost(NOTES_MAX_LENGTH)),
       }),
-      custom: z.object(Object.fromEntries(customKeys.map((key) => [key, required(variableLabel(CUSTOM_PREFIX + key))]))),
+      custom: z.object(
+        Object.fromEntries(customKeys.map((key) => [key, required(variableLabel(CUSTOM_PREFIX + key), CUSTOM_VALUE_MAX_LENGTH)])),
+      ),
       items: z
         .array(
           z.object({
-            description: required("Description"),
-            qty: z.string().trim().regex(QTY, "A number, up to 3 decimals").refine((v) => Number(v) > 0, "More than 0"),
-            unit_price: z.string().trim().regex(MONEY, "An amount like 4.50"),
+            description: required("Description", SHORT_TEXT_MAX_LENGTH),
+            qty: z
+              .string()
+              .trim()
+              .regex(QTY, "A number, up to 3 decimals")
+              .refine((v) => Number(v) > 0, "More than 0")
+              .refine((v) => Number(v) <= MAX_QTY, `At most ${MAX_QTY.toLocaleString("en-US")}`),
+            unit_price: z.string().trim().regex(MONEY, "An amount like 4.50").refine(withinMaxAmount, AMOUNT_LIMIT_MESSAGE),
           }),
         )
         .max(MAX_LINE_ITEMS, `At most ${MAX_LINE_ITEMS} items`),
       tax_percent: z.string().trim().regex(PERCENT, "A percentage like 8 or 8.25").refine((v) => Number(v) <= 100, "At most 100%"),
-      discount: z.string().trim().regex(MONEY, "An amount like 2.00"),
+      discount: z.string().trim().regex(MONEY, "An amount like 2.00").refine(withinMaxAmount, AMOUNT_LIMIT_MESSAGE),
     })
     .superRefine((values, ctx) => {
       const result = computeTotals(values.items, percentToFraction(values.tax_percent) ?? "0", values.discount);
       if (!result.ok && result.error === "DISCOUNT_TOO_LARGE") {
         ctx.addIssue({ code: "custom", path: ["discount"], message: "The discount can't be more than the subtotal" });
+      }
+      if (!result.ok && result.error === "AMOUNT_TOO_LARGE") {
+        ctx.addIssue({ code: "custom", path: ["items"], message: TOTAL_LIMIT_MESSAGE });
+      }
+      // A QR code holds limited text: flag the fields of any that overflow once
+      // filled in (the server re-checks with the final receipt number)
+      const filled = formVariableValues(values, values.receipt.number.trim());
+      for (const qr of qrCodes) {
+        if (qrFits(resolveVariables(qr.props.content, filled), qr.props.errorCorrection)) continue;
+        for (const key of new Set(findVariables(qr.props.content))) {
+          ctx.addIssue({ code: "custom", path: key.split("."), message: "Too long for the QR code" });
+        }
       }
     }) as unknown as z.ZodType<GenerateValues, GenerateValues>;
 
@@ -166,17 +238,7 @@ export function previewFromForm(values: GenerateValues, nextNumber: string | nul
     return one.ok ? one.totals.subtotal : PENDING;
   };
   return {
-    values: {
-      "business.name": values.business?.name ?? "",
-      "customer.name": values.customer?.name ?? "",
-      "customer.email": values.customer?.email ?? "",
-      "receipt.number": values.receipt?.number?.trim() || nextNumber || "",
-      "receipt.date": values.receipt?.date ?? "",
-      "receipt.payment_method": values.receipt?.payment_method ?? "",
-      "receipt.currency": (values.receipt?.currency ?? "").toUpperCase(),
-      "receipt.notes": values.receipt?.notes ?? "",
-      ...Object.fromEntries(Object.entries(values.custom ?? {}).map(([k, v]) => [CUSTOM_PREFIX + k, v])),
-    },
+    values: formVariableValues(values, values.receipt?.number?.trim() || nextNumber || ""),
     rows: items.map((item) => ({ ...item, line_total: lineTotal(item) })),
     totals: computed
       ? { subtotal: computed.subtotal, tax: computed.tax, discount: computed.discount, total: computed.total }

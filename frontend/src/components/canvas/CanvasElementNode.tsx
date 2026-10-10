@@ -6,6 +6,7 @@ import { GRID_SIZE, MIN_ELEMENT_SIZE } from "../../lib/units";
 import { floorToGrid, maxGridPosition, snapToGrid } from "../../lib/canvasUtils";
 import { useAssetUrl } from "../../api/assets";
 import { InlineTextEditor } from "./InlineTextEditor";
+import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
 
 const ALL_DIRECTIONS = ["nw", "n", "ne", "w", "e", "sw", "s", "se"];
 // Width-only handles:
@@ -82,7 +83,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
 
   return (
     <>
-      {ElNode}
+      <ElementErrorBoundary element={element} onPointerDown={handleSelect}>{ElNode}</ElementErrorBoundary>
       {isEditing && element.type === "text" && <InlineTextEditor element={element} />}
       {isSelected && target && !isEditing && (
         <Moveable

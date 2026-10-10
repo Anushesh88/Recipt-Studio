@@ -3,6 +3,7 @@ import type { CanvasElement } from "../../schema/templateSchema";
 import { VariableTextarea } from "../variables/VariableTextarea";
 import { Section, SelectField } from "./fields";
 import { usePropUpdater } from "./usePropUpdater";
+import { qrFits, qrTooLongMessage } from "../../lib/qr";
 
 type QrElement = Extract<CanvasElement, { type: "qr" }>;
 
@@ -19,7 +20,11 @@ export const QrPanel: React.FC<{ element: QrElement }> = ({ element }) => {
   return (
     <Section title="QR code">
       <VariableTextarea id="qr-content" label="Encoded content" value={props.content} onChange={(v) => set("content", v)} rows={2} />
-      <p className="text-xs text-muted-foreground">The canvas encodes sample values; exports encode the real ones.</p>
+      {qrFits(props.content, props.errorCorrection) ? (
+        <p className="text-xs text-muted-foreground">The canvas encodes sample values; exports encode the real ones.</p>
+      ) : (
+        <p role="alert" className="text-xs text-destructive">{qrTooLongMessage(props.errorCorrection)}</p>
+      )}
       <SelectField
         id="qr-error-correction"
         label="Error correction"

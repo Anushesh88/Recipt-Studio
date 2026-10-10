@@ -1,5 +1,5 @@
 {
-  "_comment": "Receipt money. line_total = round(qty * unit_price); subtotal = sum; taxable = subtotal - discount; tax = round(taxable * tax_rate); total = taxable + tax; every amount rounds half-up to cents. Run by frontend/tests/sharedFixtures.test.ts (lib/money.ts) and backend/tests/test_shared_fixtures.py (totals_service).",
+  "_comment": "Receipt money. line_total = round(qty * unit_price); subtotal = sum; taxable = subtotal - discount; tax = round(taxable * tax_rate); total = taxable + tax; every amount rounds half-up to cents; the subtotal and total may not exceed 9999999999.99 (NUMERIC(12,2)). Run by frontend/tests/sharedFixtures.test.ts (lib/money.ts) and backend/tests/test_shared_fixtures.py (totals_service).",
   "cases": [
     {
       "name": "docs example",
@@ -74,6 +74,27 @@
       "tax_rate": "0",
       "discount": "5.01",
       "error": "DISCOUNT_TOO_LARGE"
+    },
+    {
+      "name": "a total of exactly 9999999999.99 (the NUMERIC(12,2) maximum) is fine",
+      "items": [{ "qty": "1", "unit_price": "9999999999.99" }],
+      "tax_rate": "0",
+      "discount": "0",
+      "expected": { "line_totals": ["9999999999.99"], "subtotal": "9999999999.99", "discount": "0.00", "tax": "0.00", "total": "9999999999.99" }
+    },
+    {
+      "name": "a subtotal above the maximum is an error",
+      "items": [{ "qty": "1000000", "unit_price": "10000.00" }],
+      "tax_rate": "0",
+      "discount": "0",
+      "error": "AMOUNT_TOO_LARGE"
+    },
+    {
+      "name": "tax that pushes the total above the maximum is an error",
+      "items": [{ "qty": "1", "unit_price": "9999999999.99" }],
+      "tax_rate": "0.01",
+      "discount": "0",
+      "error": "AMOUNT_TOO_LARGE"
     }
   ]
 }

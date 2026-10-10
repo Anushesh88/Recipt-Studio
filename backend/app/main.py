@@ -1,7 +1,11 @@
-from typing import Literal
+import math
+from typing import Any, Literal
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
@@ -21,6 +25,27 @@ app.add_middleware(
     # Lets the frontend read the file name of exports
     expose_headers=["Content-Disposition"],
 )
+
+def _json_safe(value: Any) -> Any:
+    """Infinity / NaN as text. Python's JSON parser accepts them in requests, but
+    a response can't contain them, so echoing one back in a 422 would fail."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {key: _json_safe(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_json_safe(item) for item in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # FastAPI's default 422 body, made safe to serialize
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        content={"detail": _json_safe(jsonable_encoder(exc.errors()))},
+    )
+
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(templates_router, prefix="/templates", tags=["templates"])
