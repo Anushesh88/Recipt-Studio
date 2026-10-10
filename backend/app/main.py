@@ -1,5 +1,8 @@
+from typing import Literal
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.api.assets import router as assets_router
 from app.api.auth import router as auth_router
@@ -25,6 +28,10 @@ app.include_router(receipts_router, prefix="/receipts", tags=["receipts"])
 app.include_router(assets_router, prefix="/assets", tags=["assets"])
 app.include_router(preview_router, prefix="/preview", tags=["preview"])
 
-@app.get("/health")
-async def health_check() -> dict[str, str]:
-    return {"status": "ok"}
+class HealthResponse(BaseModel):
+    status: Literal["ok"]
+
+
+@app.get("/health", response_model=HealthResponse)
+async def health_check() -> HealthResponse:
+    return HealthResponse(status="ok")

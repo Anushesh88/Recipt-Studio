@@ -2,12 +2,12 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies (WeasyPrint needs these)
-RUN apt-get update && apt-get install -y \
+# WeasyPrint's system libraries (Pango for text layout, HarfBuzz subsetting for
+# embedding fonts in PDFs)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     libpango-1.0-0 \
     libpangoft2-1.0-0 \
-    libjpeg-dev \
-    libopenjp2-7-dev \
+    libharfbuzz-subset0 \
     libffi-dev \
     shared-mime-info \
     && rm -rf /var/lib/apt/lists/*
@@ -15,9 +15,11 @@ RUN apt-get update && apt-get install -y \
 # Install uv for fast resolution/installation
 RUN pip install uv
 
-COPY pyproject.toml ./
+# pyproject.toml names README.md as the package readme, so both are needed to install
+COPY pyproject.toml README.md ./
 RUN uv pip install --system -e .[dev]
 
 COPY . .
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Bring the database schema up to date, then serve
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

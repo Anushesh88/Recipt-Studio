@@ -1,6 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
+import sqlalchemy as sa
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -19,6 +20,20 @@ if config.config_file_name is not None:
 from app.models import Base
 
 target_metadata = Base.metadata
+
+
+def compare_type(
+    context: object,
+    inspected_column: object,
+    metadata_column: object,
+    inspected_type: sa.types.TypeEngine[object],
+    metadata_type: sa.types.TypeEngine[object],
+) -> bool | None:
+    """SQLite has no UUID type and reflects UUID columns as NUMERIC; that isn't drift."""
+    if isinstance(metadata_type, sa.Uuid) and isinstance(inspected_type, sa.NUMERIC):
+        return False
+    return None  # default comparison
+
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -45,6 +60,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=compare_type,
     )
 
     with context.begin_transaction():
@@ -52,7 +68,9 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, target_metadata=target_metadata, compare_type=compare_type
+    )
 
     with context.begin_transaction():
         context.run_migrations()
