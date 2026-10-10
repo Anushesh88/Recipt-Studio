@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, FilePlus2, LogOut, Pencil, ReceiptText, Trash2 } from 'lucide-react';
+import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '../store/authStore';
 import { createTemplate, deleteTemplate, fetchTemplate, templateKeys, useTemplates, type TemplateSummary } from '../api/templates';
@@ -84,10 +84,15 @@ export default function Templates() {
     <div className="mx-auto max-w-6xl p-8">
       <div className="mb-8 flex items-center justify-between">
         <h1 className="text-3xl font-bold">My Templates</h1>
-        <Button variant="ghost" onClick={() => setToken(null)}>
-          <LogOut />
-          Logout
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/history"><HistoryIcon />Receipt history</Link>
+          </Button>
+          <Button variant="ghost" onClick={() => setToken(null)}>
+            <LogOut />
+            Logout
+          </Button>
+        </div>
       </div>
 
       {actionError && <p role="alert" className="mb-4 text-sm text-destructive">{actionError}</p>}

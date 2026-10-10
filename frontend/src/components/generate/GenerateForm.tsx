@@ -13,6 +13,7 @@ import { createReceipt, receiptApiError, receiptKeys, useNextNumber, type Receip
 import { apiErrorMessage } from "../../api/client";
 import { variableLabel, CUSTOM_PREFIX } from "../../lib/variables";
 import { ReceiptPreview } from "../preview/ReceiptPreview";
+import { ExportButtons } from "../receipts/ExportButtons";
 import {
   buildFormModel,
   emptyLineItem,
@@ -74,7 +75,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
     try {
       const receipt = await createReceipt(templateId, toPayload(values, model.customKeys));
       setCreated(receipt);
-      void queryClient.invalidateQueries({ queryKey: receiptKeys.nextNumber });
+      void queryClient.invalidateQueries({ queryKey: receiptKeys.all });
     } catch (e) {
       const apiError = receiptApiError(e);
       if (apiError && apiError.fields.length > 0) {
@@ -140,9 +141,14 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button type="button" onClick={startAnother}>Generate another</Button>
-                <Button asChild variant="outline"><Link to="/templates">Back to templates</Link></Button>
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">Download</p>
+                <ExportButtons receiptId={created.id} receiptNumber={created.receipt_number} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={startAnother}>Generate another</Button>
+                <Button asChild variant="outline"><Link to="/history">Receipt history</Link></Button>
+                <Button asChild variant="ghost"><Link to="/templates">Back to templates</Link></Button>
               </div>
             </Section>
           </div>

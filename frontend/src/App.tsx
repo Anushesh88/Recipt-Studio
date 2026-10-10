@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Templates from './pages/Templates';
 import { Editor } from './pages/Editor';
 import { Generate } from './pages/Generate';
+import { History } from './pages/History';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -18,6 +19,7 @@ function App() {
         {/* /editor = new blank template, /editor/:id = saved template */}
         <Route path="/editor/:id?" element={requireAuth(<Editor />)} />
         <Route path="/generate/:templateId" element={requireAuth(<Generate />)} />
+        <Route path="/history" element={requireAuth(<History />)} />
         <Route path="*" element={<Navigate to="/templates" />} />
       </Routes>
     </BrowserRouter>

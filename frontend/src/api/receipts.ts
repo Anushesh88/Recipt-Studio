@@ -37,9 +37,28 @@ export interface NextNumber {
   next_number: string | null;
 }
 
+export interface ReceiptSummary {
+  id: string;
+  template_id: string | null;
+  receipt_number: string;
+  customer_name: string | null;
+  total_amount: string;
+  currency: string;
+  created_at: string | null;
+}
+
 export const receiptKeys = {
+  all: ['receipts'] as const,
   nextNumber: ['receipts', 'next-number'] as const,
 };
+
+// Newest first
+export function useReceipts() {
+  return useQuery({
+    queryKey: receiptKeys.all,
+    queryFn: async () => (await apiClient.get<ReceiptSummary[]>('/receipts')).data,
+  });
+}
 
 // Preview of what a blank receipt number would become (doesn't consume it)
 export function useNextNumber() {

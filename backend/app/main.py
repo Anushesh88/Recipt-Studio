@@ -15,6 +15,8 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    # Lets the frontend read the file name of exports
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
