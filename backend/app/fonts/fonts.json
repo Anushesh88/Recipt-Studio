@@ -1,0 +1,152 @@
+[
+  {
+    "family": "Inter",
+    "weight": 400,
+    "file": "inter-400.ttf"
+  },
+  {
+    "family": "Inter",
+    "weight": 500,
+    "file": "inter-500.ttf"
+  },
+  {
+    "family": "Inter",
+    "weight": 600,
+    "file": "inter-600.ttf"
+  },
+  {
+    "family": "Inter",
+    "weight": 700,
+    "file": "inter-700.ttf"
+  },
+  {
+    "family": "Roboto",
+    "weight": 400,
+    "file": "roboto-400.ttf"
+  },
+  {
+    "family": "Roboto",
+    "weight": 500,
+    "file": "roboto-500.ttf"
+  },
+  {
+    "family": "Roboto",
+    "weight": 600,
+    "file": "roboto-600.ttf"
+  },
+  {
+    "family": "Roboto",
+    "weight": 700,
+    "file": "roboto-700.ttf"
+  },
+  {
+    "family": "Open Sans",
+    "weight": 400,
+    "file": "open-sans-400.ttf"
+  },
+  {
+    "family": "Open Sans",
+    "weight": 500,
+    "file": "open-sans-500.ttf"
+  },
+  {
+    "family": "Open Sans",
+    "weight": 600,
+    "file": "open-sans-600.ttf"
+  },
+  {
+    "family": "Open Sans",
+    "weight": 700,
+    "file": "open-sans-700.ttf"
+  },
+  {
+    "family": "Montserrat",
+    "weight": 400,
+    "file": "montserrat-400.ttf"
+  },
+  {
+    "family": "Montserrat",
+    "weight": 500,
+    "file": "montserrat-500.ttf"
+  },
+  {
+    "family": "Montserrat",
+    "weight": 600,
+    "file": "montserrat-600.ttf"
+  },
+  {
+    "family": "Montserrat",
+    "weight": 700,
+    "file": "montserrat-700.ttf"
+  },
+  {
+    "family": "Lato",
+    "weight": 400,
+    "file": "lato-400.ttf"
+  },
+  {
+    "family": "Lato",
+    "weight": 700,
+    "file": "lato-700.ttf"
+  },
+  {
+    "family": "Poppins",
+    "weight": 400,
+    "file": "poppins-400.ttf"
+  },
+  {
+    "family": "Poppins",
+    "weight": 500,
+    "file": "poppins-500.ttf"
+  },
+  {
+    "family": "Poppins",
+    "weight": 600,
+    "file": "poppins-600.ttf"
+  },
+  {
+    "family": "Poppins",
+    "weight": 700,
+    "file": "poppins-700.ttf"
+  },
+  {
+    "family": "Merriweather",
+    "weight": 400,
+    "file": "merriweather-400.ttf"
+  },
+  {
+    "family": "Merriweather",
+    "weight": 500,
+    "file": "merriweather-500.ttf"
+  },
+  {
+    "family": "Merriweather",
+    "weight": 600,
+    "file": "merriweather-600.ttf"
+  },
+  {
+    "family": "Merriweather",
+    "weight": 700,
+    "file": "merriweather-700.ttf"
+  },
+  {
+    "family": "Roboto Mono",
+    "weight": 400,
+    "file": "roboto-mono-400.ttf"
+  },
+  {
+    "family": "Roboto Mono",
+    "weight": 500,
+    "file": "roboto-mono-500.ttf"
+  },
+  {
+    "family": "Roboto Mono",
+    "weight": 600,
+    "file": "roboto-mono-600.ttf"
+  },
+  {
+    "family": "Roboto Mono",
+    "weight": 700,
+    "file": "roboto-mono-700.ttf"
+  }
+]

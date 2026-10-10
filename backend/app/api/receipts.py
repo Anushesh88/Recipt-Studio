@@ -1,10 +1,16 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
+from app.api.rendering import (
+    file_response,
+    overflow_error,
+    rate_limited_user,
+    renderer_unavailable_error,
+)
 from app.core.db import get_db
 from app.models.receipt import Receipt
 from app.models.user import User
@@ -14,7 +20,14 @@ from app.schemas.receipt import (
     ReceiptResponse,
     ReceiptSummary,
 )
-from app.services import numbering_service, receipt_service, totals_service
+from app.services import (
+    export_service,
+    layout_service,
+    numbering_service,
+    receipt_service,
+    render_service,
+    totals_service,
+)
 
 router = APIRouter()
 
@@ -65,6 +78,8 @@ async def create_receipt(
             f"Receipt number {e.number} is already used. Choose another or leave it blank.",
             ["receipt.number"],
         ) from None
+    except layout_service.ContentOverflowError as e:
+        raise overflow_error(e.preset) from None
 
 
 @router.get("", response_model=list[ReceiptSummary])
@@ -84,3 +99,27 @@ async def get_receipt(
     if receipt is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receipt not found")
     return receipt
+
+
+@router.get(
+    "/{receipt_id}/export",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}, "image/png": {}}}},
+)
+async def export_receipt(
+    receipt_id: uuid.UUID,
+    format: Literal["pdf", "png"] = Query("pdf"),
+    current_user: User = Depends(rate_limited_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """The receipt as a PDF (or PNG), rendered from its template snapshot."""
+    receipt = await receipt_service.get_receipt(db, current_user, receipt_id)
+    if receipt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receipt not found")
+    try:
+        export = await export_service.export_receipt(db, current_user, receipt, format)
+    except render_service.ContentOverflowError as e:
+        raise overflow_error(e.preset) from None
+    except render_service.RendererUnavailableError:
+        raise renderer_unavailable_error() from None
+    return file_response(export)

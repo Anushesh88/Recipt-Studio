@@ -26,7 +26,7 @@ const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ el
     case "totals":
       return <TotalsEl element={element} values={totals} />;
     case "image":
-      return <ImageEl element={element} assetSrc={assetSrc} />;
+      return <ImageEl element={element} assetSrc={assetSrc} showPlaceholder={false} />;
     case "signature":
       return <SignatureEl element={element} assetSrc={assetSrc} />;
     case "divider":

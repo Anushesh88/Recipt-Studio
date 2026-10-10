@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from app.services import totals_service, variables_service
+from app.services import layout_service, totals_service, variables_service
 
 FIXTURES = Path(__file__).resolve().parents[2] / "shared" / "fixtures"
 
@@ -53,3 +53,18 @@ def test_totals() -> None:
         assert str(result.discount) == expected["discount"], case["name"]
         assert str(result.tax) == expected["tax"], case["name"]
         assert str(result.total) == expected["total"], case["name"]
+
+
+def test_layout() -> None:
+    fixtures = load("layout_cases.json")
+    for case in fixtures["cases"]:
+        template = fixtures["templates"][case["template"]]
+        result = layout_service.apply_layout(template["page"], template["elements"], case["n_rows"])
+        expected = case["expected"]
+        assert result.delta == expected["delta"], case["name"]
+        assert result.page_height == expected["page_height"], case["name"]
+        assert result.error == expected["error"], case["name"]
+        assert {
+            element_id: {"y": y, "height": height}
+            for element_id, (y, height) in result.positions.items()
+        } == expected["positions"], case["name"]

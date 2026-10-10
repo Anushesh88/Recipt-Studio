@@ -16,6 +16,7 @@ from app.schemas.receipt import (
     ReceiptDataOut,
 )
 from app.services import (
+    layout_service,
     numbering_service,
     template_service,
     totals_service,
@@ -67,6 +68,10 @@ async def create_receipt(db: AsyncSession, user: User, payload: ReceiptCreate) -
         tax_rate=data.tax_rate,
         discount=data.discount,
     )
+
+    # A receipt that can't be exported (too many items for a fixed page) is
+    # refused up front rather than stored
+    layout_service.ensure_fits(template.canvas["page"], template.canvas.get("elements", []), len(data.items))
 
     # Last, so a rejected request never consumes a sequence number
     number = await numbering_service.assign_number(db, user, data.receipt.number or None)

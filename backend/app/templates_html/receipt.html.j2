@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+{#-
+  Receipt PDF page (Architecture parity rule). Mirrors the React element
+  components in frontend/src/components/elements: every element is an
+  absolutely positioned box with explicit size and overflow hidden; NO flexbox
+  or grid. Values arrive pre-resolved as data (render_service) and are
+  autoescaped; only the segno QR SVG is passed as markup.
+  Any change here must be made in the React component too, and vice versa.
+-#}
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  {%- for font in fonts %}
+  @font-face {
+    font-family: '{{ font.family }}';
+    font-weight: {{ font.weight }};
+    font-style: normal;
+    src: url('{{ font.src }}') format('truetype');
+  }
+  {%- endfor %}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  @page { size: {{ page.width }}px {{ page_height }}px; margin: 0; }
+  html, body { width: {{ page.width }}px; height: {{ page_height }}px; }
+  .page { position: relative; width: {{ page.width }}px; height: {{ page_height }}px; overflow: hidden; background-color: {{ page.background }}; }
+  .el { position: absolute; overflow: hidden; }
+  .abs { position: absolute; }
+  img { display: block; }
+  table { table-layout: fixed; width: 100%; border-collapse: separate; border-spacing: 0; }
+  th, td { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+<div class="page">
+{%- for el in elements %}
+  <div class="el" data-element-id="{{ el.id }}" data-type="{{ el.type }}" style="left: {{ el.x }}px; top: {{ el.y }}px; width: {{ el.width }}px; height: {{ el.height }}px;">
+  {%- if el.type == "text" %}
+    <div style="width: 100%; height: 100%; font-family: {{ el.font }}; font-size: {{ el.font_size }}px; font-weight: {{ el.font_weight }}; color: {{ el.color }}; text-align: {{ el.align }}; line-height: {{ el.line_height }}; white-space: pre-wrap; overflow-wrap: break-word;">{{ el.content }}</div>
+  {%- elif el.type == "image" %}
+    {%- if el.src %}
+    <img src="{{ el.src }}" alt="" style="width: 100%; height: 100%; object-fit: {{ el.fit }};">
+    {%- endif %}
+  {%- elif el.type == "items_table" %}
+    <table style="font-family: {{ el.font }}; font-size: {{ el.font_size }}px; color: {{ el.color }};">
+      <thead>
+        <tr style="height: {{ el.row_height }}px;">
+          {%- for col in el.columns %}
+          <th style="text-align: {{ col.align }}; line-height: {{ el.line_box }}px; padding: {{ el.padding }}px 0 {{ el.header_padding_bottom }}px; border-bottom: {{ el.header_divider }}; width: {{ col.width_pct }}%; font-weight: {{ el.header_weight }};">{{ col.label }}</th>
+          {%- endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {%- for row in el.rows %}
+        <tr style="height: {{ el.row_height }}px;">
+          {%- for cell in row.cells %}
+          <td style="text-align: {{ cell.align }}; line-height: {{ el.line_box }}px; padding: {{ el.padding }}px 0 {{ row.padding_bottom }}px; border-bottom: {{ row.divider }};">{{ cell.text }}</td>
+          {%- endfor %}
+        </tr>
+        {%- endfor %}
+      </tbody>
+    </table>
+  {%- elif el.type == "totals" %}
+    {%- for row in el.rows %}
+    <div class="abs" data-totals-line="{{ row.line }}" style="left: 0; top: {{ row.top }}px; width: 100%; height: {{ row.height }}px; line-height: {{ row.height }}px; font-family: {{ el.font }}; font-size: {{ row.font_size }}px; font-weight: {{ row.weight }}; color: {{ el.color }}; white-space: nowrap;">
+      <span class="abs" style="left: 0; top: 0;">{{ row.label }}</span>
+      <span class="abs" style="right: 0; top: 0;">{{ row.value }}</span>
+    </div>
+    {%- endfor %}
+  {%- elif el.type == "qr" %}
+    <div style="width: 100%; height: 100%;">{{ el.svg }}</div>
+  {%- elif el.type == "signature" %}
+    {%- if el.src %}
+    <img class="abs" src="{{ el.src }}" alt="" style="left: 0; top: 0; width: 100%; height: {{ el.image_height }}px; object-fit: contain;">
+    {%- endif %}
+    <div class="abs" style="left: 0; top: {{ el.line_top }}px; width: 100%; height: {{ el.line_thickness }}px; background-color: {{ el.color }};"></div>
+    <div class="abs" style="left: 0; top: {{ el.label_top }}px; width: 100%; height: {{ el.label_height }}px; line-height: {{ el.label_height }}px; font-family: {{ el.font }}; font-size: {{ el.label_font_size }}px; font-weight: 400; color: {{ el.color }}; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ el.label }}</div>
+  {%- elif el.type == "divider" %}
+    <div class="abs" style="left: 0; top: {{ el.line_top }}px; width: 100%; height: 0; border-top: {{ el.thickness }}px {{ el.style }} {{ el.color }};"></div>
+  {%- endif %}
+  </div>
+{%- endfor %}
+</div>
+</body>
+</html>

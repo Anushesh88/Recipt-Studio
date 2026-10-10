@@ -40,6 +40,11 @@ testpaths = ["tests"]
 strict = true
 exclude = ["alembic"]
 
+[[tool.mypy.overrides]]
+# WeasyPrint ships no type information
+module = ["weasyprint", "weasyprint.*"]
+ignore_missing_imports = true
+
 [tool.ruff]
 line-length = 88
 

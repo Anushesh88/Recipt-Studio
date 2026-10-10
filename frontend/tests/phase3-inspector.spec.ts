@@ -140,7 +140,7 @@ test.describe('Phase 3 inspector', () => {
     await drop(page, 'Divider', 12, 360);
     await page.locator('[aria-label="Dotted"]').click();
     await page.getByLabel('Thickness (px)').fill('3');
-    const line = page.locator('[data-type="divider"] > div > div');
+    const line = page.locator('[data-type="divider"] > div');
     await expect(line).toHaveCSS('border-top-style', 'dotted');
     await expect(line).toHaveCSS('border-top-width', '3px');
 

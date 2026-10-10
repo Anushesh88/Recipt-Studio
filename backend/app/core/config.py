@@ -15,6 +15,15 @@ class Settings(BaseSettings):
     ASSET_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "assets"
     MAX_ASSET_BYTES: int = 2 * 1024 * 1024
 
+    # Rendered receipt PDFs, cached for re-download
+    RECEIPT_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "receipts"
+    # Exports / previews per user per window (basic abuse protection)
+    EXPORT_RATE_LIMIT: int = 30
+    EXPORT_RATE_WINDOW_SECONDS: int = 60
+    # Folder with WeasyPrint's GTK/Pango DLLs on Windows; the standard MSYS2
+    # location (C:\msys64\mingw64\bin) is used automatically when present
+    WEASYPRINT_DLL_DIRECTORIES: str | None = None
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 settings = Settings()

@@ -85,6 +85,7 @@ class ReceiptSummary(BaseModel):
     id: uuid.UUID
     template_id: uuid.UUID | None
     receipt_number: str
+    customer_name: str | None
     total_amount: Decimal
     currency: str
     created_at: UtcDatetime | None

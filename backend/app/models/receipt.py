@@ -43,6 +43,12 @@ class Receipt(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
+    @property
+    def customer_name(self) -> str | None:
+        """For lists (History page); the full data lives in `data`."""
+        name = (self.data.get("customer") or {}).get("name")
+        return name if isinstance(name, str) else None
+
     __table_args__ = (
         UniqueConstraint("user_id", "receipt_number", name="uq_receipts_user_id_receipt_number"),
         Index("ix_receipts_user_id_created_at", "user_id", "created_at"),

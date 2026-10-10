@@ -1,6 +1,7 @@
 import React from "react";
 import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
-import { fontStack } from "../../lib/units";
+import { TOTALS_FIELDS, fontStack } from "../../lib/units";
+import { totalsRows } from "../../lib/elementLayout";
 
 export type TotalsValues = Record<"subtotal" | "tax" | "discount" | "total", string>;
 
@@ -12,46 +13,44 @@ const SAMPLE_TOTALS: TotalsValues = {
   total: "37.80",
 };
 
-// `values` are the receipt's computed totals (Generate preview)
-export const TotalsEl = React.forwardRef<HTMLDivElement, ElementProps<"totals"> & { values?: TotalsValues }>(({ element, values, ...domProps }, ref) => {
-  const { props } = element;
-  const amounts = values ?? SAMPLE_TOTALS;
+const LABELS = Object.fromEntries(TOTALS_FIELDS.map((f) => [f.key, f.label])) as Record<keyof TotalsValues, string>;
 
-  const labels: Record<string, string> = {
-    subtotal: "Subtotal",
-    tax: "Tax",
-    discount: "Discount",
-    total: "Total",
-  };
+// Totals have no color prop; set it explicitly so the editor and the PDF agree
+// instead of inheriting different defaults
+const TOTALS_COLOR = "#000000";
 
-  return (
-    <BaseElementWrapper element={element} ref={ref} {...domProps}>
-      <div
-        style={{
-          fontFamily: fontStack(props.fontFamily),
-          fontSize: `${props.fontSize}px`,
-          width: "100%",
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-        }}
-      >
-        {props.show.map((field) => (
+// `values` are the receipt's computed totals (Generate preview). Rows are placed
+// absolutely (lib/elementLayout.ts), mirrored by receipt.html.j2.
+export const TotalsEl = React.forwardRef<HTMLDivElement, ElementProps<"totals"> & { values?: TotalsValues }>(
+  ({ element, values, ...domProps }, ref) => {
+    const { props } = element;
+    const amounts = values ?? SAMPLE_TOTALS;
+    return (
+      <BaseElementWrapper element={element} ref={ref} {...domProps}>
+        {totalsRows(props).map((row) => (
           <div
-            key={field}
+            key={row.line}
+            data-totals-line={row.line}
             style={{
-              display: "flex",
-              justifyContent: "space-between",
-              fontWeight: field === "total" && props.emphasizeTotal ? "bold" : "normal",
-              fontSize: field === "total" && props.emphasizeTotal ? `${props.fontSize * 1.2}px` : `${props.fontSize}px`,
+              position: "absolute",
+              left: 0,
+              top: row.top,
+              width: "100%",
+              height: row.height,
+              lineHeight: `${row.height}px`,
+              fontFamily: fontStack(props.fontFamily),
+              fontSize: `${row.fontSize}px`,
+              fontWeight: row.bold ? 700 : 400,
+              color: TOTALS_COLOR,
+              whiteSpace: "nowrap",
             }}
           >
-            <span>{labels[field]}</span>
-            <span>{props.currencySymbol}{amounts[field]}</span>
+            <span style={{ position: "absolute", left: 0, top: 0 }}>{LABELS[row.line]}</span>
+            <span style={{ position: "absolute", right: 0, top: 0 }}>{props.currencySymbol}{amounts[row.line]}</span>
           </div>
         ))}
-      </div>
-    </BaseElementWrapper>
-  );
-});
+      </BaseElementWrapper>
+    );
+  },
+);
 TotalsEl.displayName = "TotalsEl";
