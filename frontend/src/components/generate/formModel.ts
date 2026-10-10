@@ -180,6 +180,13 @@ export const today = () => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 };
 
+// A receipt's currency defaults to the one its totals are printed in
+const CURRENCY_BY_SYMBOL: Record<string, string> = { "₹": "INR", "$": "USD", "€": "EUR", "£": "GBP" };
+export function templateCurrency(canvas: Canvas): string {
+  const totals = canvas.elements.find((e) => e.type === "totals");
+  return (totals && CURRENCY_BY_SYMBOL[totals.props.currencySymbol.trim()]) || DEFAULT_CURRENCY;
+}
+
 export const emptyLineItem = (): LineItemValues => ({
   description: "", qty: "1", unit_price: "", hsn: "", unit: "", discount: "", gst_rate: "",
 });
@@ -314,7 +321,7 @@ export function buildFormModel(canvas: Canvas): FormModel {
       business: { name: "" },
       customer: { name: "", email: "", address: "", gstin: "" },
       receipt: {
-        number: "", date: today(), payment_method: "", currency: gst ? GST_CURRENCY : DEFAULT_CURRENCY, notes: "",
+        number: "", date: today(), payment_method: "", currency: gst ? GST_CURRENCY : templateCurrency(canvas), notes: "",
         place_of_supply: "", reverse_charge: false,
       },
       custom: Object.fromEntries(customKeys.map((key) => [key, ""])),

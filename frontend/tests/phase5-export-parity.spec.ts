@@ -1,3 +1,4 @@
+import { BRAND_STRIP_HEIGHT } from '../src/lib/layout';
 import { test, expect, type Page } from '@playwright/test';
 
 // Phase 5: the server's receipt HTML (what WeasyPrint turns into the PDF) must
@@ -107,9 +108,19 @@ test('server HTML lays out exactly like the live preview for 1, 5 and 30 items',
     await serverPage.setContent(await html.text());
     const server = await measure(serverPage, '.page');
 
-    // The thermal page grows by one 24px row per item beyond the 3 designed rows
-    expect(server.size).toEqual([302, 420 + (n - 3) * 24]);
+    // The thermal page grows by one 24px row per item beyond the 3 designed
+    // rows, plus the "Made with Receipt Studio" strip under the content
+    expect(server.size).toEqual([302, 420 + (n - 3) * 24 + BRAND_STRIP_HEIGHT]);
     expect(preview.size).toEqual(server.size);
+    const brandTop = (p: Page, root: string) =>
+      p.evaluate((r) => {
+        const page = document.querySelector(r)!;
+        const scale = page.getBoundingClientRect().width / (page as HTMLElement).offsetWidth;
+        const strip = page.querySelector('[data-brand]')!;
+        return [(strip.getBoundingClientRect().top - page.getBoundingClientRect().top) / scale, strip.textContent!.trim()];
+      }, root);
+    expect(await brandTop(serverPage, '.page')).toEqual([server.size[1] - BRAND_STRIP_HEIGHT, 'Made with Receipt Studio']);
+    expect(await brandTop(page, '[data-receipt-preview]')).toEqual(await brandTop(serverPage, '.page'));
     const missing = Object.keys(server.boxes).filter((k) => !(k in preview.boxes));
     const extra = Object.keys(preview.boxes).filter((k) => !(k in server.boxes));
     expect({ missing, extra }, `parts at ${n} items`).toEqual({ missing: [], extra: [] });

@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = DEV_SECRET_KEY
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 1 week
+    # OAuth client ID (Google Cloud console, "Web application") for "Sign in
+    # with Google"; the button is hidden while this is unset
+    GOOGLE_CLIENT_ID: str | None = None
 
     # Uploaded logos/signatures (PNG/JPG only, docs/01-prd.md)
     ASSET_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "assets"

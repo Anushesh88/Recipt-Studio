@@ -13,7 +13,10 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
-    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    # None for accounts made with "Sign in with Google" (they have no password)
+    password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Google's stable account ID ("sub"), once the account has signed in with Google
+    google_sub: Mapped[str | None] = mapped_column(Text, unique=True, nullable=True)
     business_name: Mapped[str | None] = mapped_column(Text, nullable=True)
     # server_default mirrors docs/03-schema.md so rows inserted outside the ORM get them too
     receipt_prefix: Mapped[str] = mapped_column(Text, nullable=False, default="R-", server_default="R-")
@@ -34,6 +37,14 @@ class User(Base):
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+    @property
+    def has_password(self) -> bool:
+        return self.password_hash is not None
+
+    @property
+    def google_linked(self) -> bool:
+        return self.google_sub is not None
 
     __table_args__ = (
         CheckConstraint("numbering_mode IN ('sequential', 'nanoid')", name="users_numbering_mode_check"),

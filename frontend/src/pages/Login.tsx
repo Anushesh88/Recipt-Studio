@@ -9,6 +9,8 @@ import { useAuthStore } from '../store/authStore';
 import { apiClient, apiErrorMessage } from '../api/client';
 import { utf8ByteLength } from '../lib/text';
 import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from '../lib/units';
+import { Logo } from '../components/brand/Logo';
+import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
 const email = z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address'));
 
@@ -88,9 +90,14 @@ export default function Login() {
   const [isRegister, setIsRegister] = useState(false);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-indigo-50 to-gray-100 p-4">
+      <Logo className="mb-2 text-2xl" markClassName="size-10" />
+      <p className="mb-6 text-center text-sm text-muted-foreground">Receipts and GST invoices in your own design.</p>
       <div className="w-full max-w-sm rounded-lg border border-border bg-white p-8 shadow-sm">
-        <h1 className="mb-4 text-2xl font-bold">{isRegister ? 'Register' : 'Login'}</h1>
+        <h1 className="mb-4 text-2xl font-bold">{isRegister ? 'Create your account' : 'Sign in'}</h1>
+        <div className="mb-4">
+          <GoogleSignInButton signUp={isRegister} />
+        </div>
         {/* keyed so switching modes starts a fresh form with the right rules */}
         <CredentialsForm key={isRegister ? 'register' : 'login'} isRegister={isRegister} />
         <Button type="button" variant="link" className="mt-4 h-auto p-0" onClick={() => setIsRegister(!isRegister)}>

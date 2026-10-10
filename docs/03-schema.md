@@ -133,8 +133,12 @@ Inputs: template, n_rows (number of line items)
       e.y += delta
   table.height = designed_h + delta
   if heightMode == "auto":  final_page_height = page.height + delta
-  else: if any element bottom > page.height - margin -> error CONTENT_OVERFLOW
+  else: if any element bottom > page.height - max(margin, 16) -> error CONTENT_OVERFLOW
 If no items_table exists, delta = 0.
+Every rendered receipt ends with a 16px "Made with Receipt Studio" strip (text
+only, centred, Inter 8px #9CA3AF): auto pages are drawn 16px taller with
+it below the content; fixed pages hold it in the bottom 16px, which content
+may not enter even when the margin is smaller.
 Both implementations must pass shared/fixtures/layout_cases.json.
 
 ## Receipt Data JSON (`receipts.data`)
@@ -171,7 +175,8 @@ Money is always a string (Decimal), never a float.
 users
   id                 UUID PK (uuid4)
   email              TEXT UNIQUE NOT NULL
-  password_hash      TEXT NOT NULL
+  password_hash      TEXT NULL          -- NULL: signs in with Google only
+  google_sub         TEXT UNIQUE NULL   -- Google account ID, once linked
   business_name      TEXT
   receipt_prefix     TEXT NOT NULL DEFAULT 'R-'
   numbering_mode     TEXT NOT NULL DEFAULT 'sequential'
@@ -233,6 +238,11 @@ customers / catalog_items   -- remembered from receipts, for autofill
 ## Key API Endpoints
 POST   /auth/register, /auth/login   (passwords: at least 8 characters, at most
                                    72 bytes; emails are case-insensitive)
+GET    /auth/providers  (google_client_id, or null when Google sign-in is off)
+POST   /auth/google     ({credential}: a Google ID token -> login token; makes
+                         the account, or links the one with that verified email
+                         and retires its password. 401 GOOGLE_TOKEN_INVALID,
+                         503 GOOGLE_SIGN_IN_DISABLED)
 GET    /auth/me            PATCH /auth/me   (business name, receipt prefix,
                                              numbering mode: sequential | nanoid)
 GET    /templates          POST /templates

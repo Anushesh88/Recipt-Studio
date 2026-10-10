@@ -13,6 +13,7 @@ import { apiErrorMessage } from "../api/client";
 import { BUSINESS_NAME_MAX_LENGTH } from "../lib/units";
 import { GSTIN_LENGTH, gstinProblem, stateLabel } from "../lib/gst";
 import { ADDRESS_MAX_LENGTH } from "../components/generate/formModel";
+import { Logo } from "../components/brand/Logo";
 
 // The GST details are optional here: they can be added later in Settings
 const schema = z.object({
@@ -117,6 +118,7 @@ export const Welcome: React.FC = () => {
   const { data: account, isError, error } = useAccount();
   return (
     <div className="mx-auto max-w-xl p-4 sm:p-8">
+      <Logo className="mb-6" />
       <h1 className="mb-2 text-3xl font-bold">Welcome to Receipt Studio</h1>
       <p className="mb-6 text-sm text-muted-foreground">One question so we can set things up for you.</p>
       {isError && <p role="alert" className="text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your account.")}</p>}

@@ -1,6 +1,7 @@
 import React from "react";
 import type { Canvas, CanvasElement } from "../../schema/templateSchema";
-import { applyLayout, CONTENT_OVERFLOW } from "../../lib/layout";
+import { applyLayout, BRAND_STRIP_HEIGHT, CONTENT_OVERFLOW } from "../../lib/layout";
+import { BrandStrip } from "../brand/BrandStrip";
 import type { VariableValues } from "../../lib/variables";
 import { useAssetUrl } from "../../api/assets";
 import { DividerEl, ImageEl, QrEl, SignatureEl, TableEl, TextEl, TotalsEl } from "../elements";
@@ -15,9 +16,11 @@ interface ReceiptData {
   totals: TotalsValues;
   // What the totals' tax line prints as (GST invoices: CGST + SGST, or IGST)
   taxRows?: TaxRow[];
+  // Gray boxes where a logo / image hasn't been uploaded (the template gallery)
+  imagePlaceholders?: boolean;
 }
 
-const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ element, values, rows, totals, taxRows }) => {
+const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ element, values, rows, totals, taxRows, imagePlaceholders = false }) => {
   const assetId = element.type === "image" || element.type === "signature" ? element.props.assetId : null;
   const assetSrc = useAssetUrl(assetId);
   switch (element.type) {
@@ -30,7 +33,7 @@ const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ el
     case "totals":
       return <TotalsEl element={element} values={totals} taxRows={taxRows} />;
     case "image":
-      return <ImageEl element={element} assetSrc={assetSrc} showPlaceholder={false} />;
+      return <ImageEl element={element} assetSrc={assetSrc} showPlaceholder={imagePlaceholders} />;
     case "signature":
       return <SignatureEl element={element} assetSrc={assetSrc} />;
     case "divider":
@@ -48,9 +51,12 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
   rows,
   totals,
   taxRows,
+  imagePlaceholders,
 }) => {
   const layout = applyLayout(canvas.page, canvas.elements, rows.length);
   const { page } = canvas;
+  // Auto-height pages grow to fit the brand strip; fixed pages hold it in the margin
+  const pageHeight = layout.pageHeight + (page.heightMode === "auto" ? BRAND_STRIP_HEIGHT : 0);
 
   return (
     <div className="space-y-3">
@@ -60,14 +66,14 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
           some line items or move elements up in the template.
         </p>
       )}
-      <div style={{ width: page.width * scale, height: layout.pageHeight * scale }} className="shadow-lg">
+      <div style={{ width: page.width * scale, height: pageHeight * scale }} className="shadow-lg">
         <div
           data-receipt-preview=""
-          data-page-height={layout.pageHeight}
+          data-page-height={pageHeight}
           style={{
             position: "relative",
             width: page.width,
-            height: layout.pageHeight,
+            height: pageHeight,
             backgroundColor: page.background,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
@@ -76,9 +82,10 @@ export const ReceiptPreview: React.FC<{ canvas: Canvas; scale?: number } & Recei
         >
           {layout.elements.map((element) => (
             <ElementErrorBoundary key={element.id} element={element}>
-              <PreviewElement element={element} values={values} rows={rows} totals={totals} taxRows={taxRows} />
+              <PreviewElement element={element} values={values} rows={rows} totals={totals} taxRows={taxRows} imagePlaceholders={imagePlaceholders} />
             </ElementErrorBoundary>
           ))}
+          <BrandStrip top={pageHeight - BRAND_STRIP_HEIGHT} width={page.width} />
         </div>
       </div>
     </div>

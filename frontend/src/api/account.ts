@@ -16,6 +16,9 @@ export interface Account {
   gstin: string | null;
   invoice_prefix: string;
   invoicing_mode: InvoicingMode | null;
+  // How the account signs in: a password, Google, or both
+  has_password: boolean;
+  google_linked: boolean;
 }
 
 export type AccountChanges = Partial<

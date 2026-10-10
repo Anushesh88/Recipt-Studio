@@ -154,6 +154,21 @@ export const GenerateForm: React.FC<{
     }
   };
 
+  // A name typed before the saved lists arrived is matched once they do
+  const matchedOnLoad = React.useRef({ customers: false, items: false });
+  useEffect(() => {
+    if (!savedCustomers.data || matchedOnLoad.current.customers) return;
+    matchedOnLoad.current.customers = true;
+    onCustomerName(getValues("customer.name") ?? "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the list first loads
+  }, [savedCustomers.data]);
+  useEffect(() => {
+    if (!savedItems.data || matchedOnLoad.current.items) return;
+    matchedOnLoad.current.items = true;
+    (getValues("items") ?? []).forEach((item, index) => onItemDescription(index, item.description));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the list first loads
+  }, [savedItems.data]);
+
   const onSubmit = async (values: GenerateValues) => {
     setFormError(null);
     try {

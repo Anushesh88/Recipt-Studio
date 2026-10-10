@@ -34,8 +34,8 @@ const MenuItem: React.FC<{ varKey: string; label: string; onSelect: (key: string
   </button>
 );
 
-// Built-in variables, the template's custom variables, and a "new custom variable"
-// form. The popover is tagged data-variable-menu so the inline text editor treats
+// A form for a new custom field (first, so it's easy to find), then the
+// template's custom variables and the built-ins. The popover is tagged data-variable-menu so the inline text editor treats
 // clicks inside it as part of the editing session.
 export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> = ({ onInsert }) => {
   const [open, setOpen] = useState(false);
@@ -46,7 +46,9 @@ export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> =
     () => extractVariables({ elements }).filter((key) => variableKind(key) === "custom"),
     [elements],
   );
-  const nameValid = CUSTOM_KEY_PATTERN.test(customName);
+  // "Order type" -> order_type: field names are lowercase words joined by _
+  const key = customName.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const nameValid = CUSTOM_KEY_PATTERN.test(key);
 
   const insert = (key: string) => {
     setOpen(false);
@@ -71,41 +73,21 @@ export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> =
         // the caller puts focus back in its text field, at the inserted variable
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
-        <MenuHeading>Built-in</MenuHeading>
-        {BUILTIN_VARIABLES.filter((v) => !GST_VARIABLES.has(v.key)).map((v) => (
-          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
-        ))}
-        <Separator className="my-1" />
-        <MenuHeading>GST invoice</MenuHeading>
-        {BUILTIN_VARIABLES.filter((v) => GST_VARIABLES.has(v.key)).map((v) => (
-          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
-        ))}
-        {customKeys.length > 0 && (
-          <>
-            <Separator className="my-1" />
-            <MenuHeading>Custom (used in this template)</MenuHeading>
-            {customKeys.map((key) => (
-              <MenuItem key={key} varKey={key} label={variableLabel(key)} onSelect={insert} />
-            ))}
-          </>
-        )}
-        <Separator className="my-1" />
         <form
           className="space-y-1.5 p-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (nameValid) insert(CUSTOM_PREFIX + customName);
+            if (nameValid) insert(CUSTOM_PREFIX + key);
           }}
         >
-          <label htmlFor={inputId} className="text-xs font-medium">New custom variable…</label>
+          <label htmlFor={inputId} className="text-xs font-medium">Add your own field</label>
           <div className="flex items-center gap-1.5">
-            <span className="font-mono text-xs text-muted-foreground">{CUSTOM_PREFIX}</span>
             <Input
               id={inputId}
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
-              placeholder="table_no"
-              className="h-7 font-mono text-xs"
+              placeholder="e.g. Table no"
+              className="h-7 text-xs"
               aria-invalid={customName !== "" && !nameValid}
               autoComplete="off"
             />
@@ -115,10 +97,32 @@ export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> =
             </Button>
           </div>
           {customName !== "" && !nameValid && (
-            <p className="text-xs text-destructive">Use lowercase letters and underscores only.</p>
+            <p className="text-xs text-destructive">Use letters and spaces only (no digits or symbols).</p>
           )}
-          <p className="text-xs text-muted-foreground">Each custom variable becomes a field in the Generate form.</p>
+          <p className="text-xs text-muted-foreground">
+            {nameValid ? <>Adds <code className="font-mono">{`{{${CUSTOM_PREFIX}${key}}}`}</code>; </> : null}
+            Each field you add gets a box in the Generate form.
+          </p>
         </form>
+        {customKeys.length > 0 && (
+          <>
+            <Separator className="my-1" />
+            <MenuHeading>Your fields (used in this template)</MenuHeading>
+            {customKeys.map((key) => (
+              <MenuItem key={key} varKey={key} label={variableLabel(key)} onSelect={insert} />
+            ))}
+          </>
+        )}
+        <Separator className="my-1" />
+        <MenuHeading>Built-in</MenuHeading>
+        {BUILTIN_VARIABLES.filter((v) => !GST_VARIABLES.has(v.key)).map((v) => (
+          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
+        ))}
+        <Separator className="my-1" />
+        <MenuHeading>GST invoice</MenuHeading>
+        {BUILTIN_VARIABLES.filter((v) => GST_VARIABLES.has(v.key)).map((v) => (
+          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
+        ))}
       </PopoverContent>
     </Popover>
   );

@@ -60,7 +60,7 @@ test('Settings check the GSTIN and preview the invoice number', async ({ page })
 });
 
 test('a GST template keeps its required fields; a receipt can be completed into one', async ({ page }) => {
-  const token = await newAccount(page);
+  const token = await newAccount(page, { invoicing_mode: 'gst' }); // GST starters shown first
   await page.goto(`${APP}/templates`);
   await page.locator('[data-starter="gst-a4"]').click();
   await page.waitForURL(/\/editor\/[0-9a-f-]{36}$/);

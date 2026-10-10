@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, FilePlus2, History as HistoryIcon, LayoutTemplate, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '../store/authStore';
 import { createTemplate, deleteTemplate, fetchTemplate, templateKeys, useTemplates, type TemplateSummary } from '../api/templates';
@@ -9,7 +9,8 @@ import { apiErrorMessage } from '../api/client';
 import { useAccount } from '../api/account';
 import { canvasSchema } from '../schema/templateSchema';
 import { PAGE_PRESET_LABELS } from '../lib/units';
-import { STARTER_TEMPLATES, type StarterTemplate } from '../lib/starterTemplates';
+import { StarterGallery } from '../components/templates/StarterGallery';
+import { Logo } from '../components/brand/Logo';
 
 const formatUpdated = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
@@ -79,38 +80,6 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
   );
 }
 
-// A ready-made template, copied into the account and opened in the editor
-function StarterCard({ starter, onError }: { starter: StarterTemplate; onError: (message: string) => void }) {
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const [busy, setBusy] = useState(false);
-
-  const start = async () => {
-    setBusy(true);
-    try {
-      const created = await createTemplate(starter.name, starter.canvas);
-      await queryClient.invalidateQueries({ queryKey: templateKeys.all, exact: true });
-      navigate(`/editor/${created.id}`);
-    } catch (e) {
-      onError(apiErrorMessage(e, "Couldn't create the template."));
-      setBusy(false);
-    }
-  };
-
-  return (
-    <button
-      type="button"
-      data-starter={starter.id}
-      disabled={busy}
-      onClick={start}
-      className="flex flex-col items-start gap-1 rounded-lg border border-border bg-white p-4 text-left shadow-sm transition-colors hover:border-gray-400 disabled:opacity-60"
-    >
-      <span className="flex items-center gap-1.5 font-medium"><LayoutTemplate className="size-4" />{starter.name}</span>
-      <span className="text-sm text-muted-foreground">{starter.description}</span>
-    </button>
-  );
-}
-
 export default function Templates() {
   const setToken = useAuthStore((state) => state.setToken);
   const navigate = useNavigate();
@@ -118,10 +87,6 @@ export default function Templates() {
   const account = useAccount();
   const [actionError, setActionError] = useState<string | null>(null);
   const mode = account.data?.invoicing_mode;
-  // GST users see the GST starters first, receipt users the receipt
-  const starters = mode === 'gst' ? STARTER_TEMPLATES : mode === 'receipts'
-    ? [...STARTER_TEMPLATES].sort((a, b) => Number(a.canvas.documentType === 'gst_invoice') - Number(b.canvas.documentType === 'gst_invoice'))
-    : STARTER_TEMPLATES;
 
   // Asked once, right after sign-up
   if (account.data && mode === null) return <Navigate to="/welcome" replace />;
@@ -129,7 +94,10 @@ export default function Templates() {
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-8">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">My Templates</h1>
+        <div className="space-y-2">
+          <Link to="/templates" aria-label="Receipt Studio home"><Logo /></Link>
+          <h1 className="text-3xl font-bold">My Templates</h1>
+        </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link to="/history"><HistoryIcon />Receipt history</Link>
@@ -146,12 +114,7 @@ export default function Templates() {
 
       {actionError && <p role="alert" className="mb-4 text-sm text-destructive">{actionError}</p>}
 
-      <section className="mb-8" aria-labelledby="starters-heading">
-        <h2 id="starters-heading" className="mb-3 text-sm font-semibold text-muted-foreground">Start from a ready-made template</h2>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-          {starters.map((starter) => <StarterCard key={starter.id} starter={starter} onError={setActionError} />)}
-        </div>
-      </section>
+      <StarterGallery mode={mode} onError={setActionError} />
       {isError && <p role="alert" className="mb-4 text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your templates.")}</p>}
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

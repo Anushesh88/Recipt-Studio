@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildFormModel, emptyLineItem, previewFromForm, toPayload, valuesFromReceipt, type GenerateValues } from "./formModel";
+import { buildFormModel, emptyLineItem, previewFromForm, templateCurrency, toPayload, valuesFromReceipt, type GenerateValues } from "./formModel";
 import { STARTER_TEMPLATES } from "../../lib/starterTemplates";
 import type { Account } from "../../api/account";
 import type { ReceiptRecord } from "../../api/receipts";
@@ -8,7 +8,7 @@ import { fractionToPercent } from "../../lib/money";
 const gstA4 = STARTER_TEMPLATES.find((t) => t.id === "gst-a4")!.canvas;
 const account: Account = {
   id: "a", email: "a@example.com", business_name: "Sharma Traders", receipt_prefix: "R-", numbering_mode: "sequential",
-  business_address: "12 MG Road, Pune", gstin: "27AAPFU0939F1ZV", invoice_prefix: "INV/", invoicing_mode: "gst",
+  business_address: "12 MG Road, Pune", gstin: "27AAPFU0939F1ZV", invoice_prefix: "INV/", invoicing_mode: "gst", has_password: true, google_linked: false,
 };
 
 const invoice = (change: (v: GenerateValues) => void) => {
@@ -100,5 +100,17 @@ describe("Use again", () => {
 
   it("turns a stored tax fraction back into a percentage", () => {
     expect(["0.0825", "0.08", "0.0800", "0", "0.5", "1"].map(fractionToPercent)).toEqual(["8.25", "8", "8", "0", "50", "100"]);
+  });
+});
+
+describe("default currency", () => {
+  it("follows the symbol the template's totals print", () => {
+    const shop = STARTER_TEMPLATES.find((t) => t.id === "shop-receipt")!.canvas;
+    expect(buildFormModel(shop).defaults.receipt.currency).toBe("INR");
+    const withSymbol = (symbol: string) => ({
+      ...shop, elements: shop.elements.map((e) => (e.type === "totals" ? { ...e, props: { ...e.props, currencySymbol: symbol } } : e)),
+    });
+    expect(["$", "€", "£", "Rs", ""].map((s) => templateCurrency(withSymbol(s)))).toEqual(["USD", "EUR", "GBP", "USD", "USD"]);
+    expect(templateCurrency({ ...shop, elements: [] })).toBe("USD");
   });
 });

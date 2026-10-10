@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from app.api.rendering import export_limiter
 from app.core.config import settings
 from app.services import render_service
+from app.services.layout_service import BRAND_STRIP_HEIGHT
 from tests.factories import PAGE, canvas, items_table, text, totals
 
 Login = Callable[[str], Awaitable[dict[str, str]]]
@@ -114,7 +115,8 @@ async def test_thermal_receipt_height_tracks_item_count(client: AsyncClient, log
         assert response.headers["content-disposition"] == f'attachment; filename="receipt-{receipt["receipt_number"]}.pdf"'
         width, height = page_size_px(response.content)
         # 400px design height with 3 sample rows; each item is a 24px row
-        assert (round(width), round(height)) == (302, 400 + (n - 3) * 24), n
+        # + the "Made with Receipt Studio" strip under the content
+        assert (round(width), round(height)) == (302, 400 + (n - 3) * 24 + BRAND_STRIP_HEIGHT), n
 
 
 @requires_renderer
@@ -173,7 +175,7 @@ async def test_all_seven_element_types_render(client: AsyncClient, login: Login)
     assert png.status_code == 200
     assert png.content.startswith(b"\x89PNG")
     pixmap = pymupdf.Pixmap(png.content)  # type: ignore[no-untyped-call]
-    assert (pixmap.width, pixmap.height) == (302 * 2, 400 * 2)  # 2x scale
+    assert (pixmap.width, pixmap.height) == (302 * 2, (400 + BRAND_STRIP_HEIGHT) * 2)  # 2x scale
 
 
 @requires_renderer
@@ -287,3 +289,36 @@ async def test_rendering_does_not_hold_up_other_requests(
     assert time.perf_counter() - started < 0.45, "/health waited for the render"
     assert not render.done()
     assert (await render).status_code == 200
+
+
+async def test_every_receipt_says_made_with_receipt_studio(client: AsyncClient, login: Login) -> None:
+    """Thermal pages grow to fit the strip; A5 / A4 keep it in the bottom
+    margin, so content may not reach into it even with a small margin."""
+    headers = await login("brand@example.com")
+    data = receipt_data(3)
+    for canvas_json, page_height in ((standard_canvas(), 400 + BRAND_STRIP_HEIGHT), (a5_bottom_canvas(margin=24), 794)):
+        response = await client.post("/preview", headers=headers, json={"canvas": canvas_json, "data": data, "format": "pdf"})
+        assert response.status_code == 200, response.text
+        assert "Made with Receipt Studio" in "".join(text for text, _ in spans(response.content))
+        assert round(page_size_px(response.content)[1]) == page_height
+
+    # A margin smaller than the strip: content ending in the strip doesn't fit
+    response = await client.post(
+        "/preview", headers=headers, json={"canvas": a5_bottom_canvas(margin=4), "data": data, "format": "pdf"}
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "CONTENT_OVERFLOW"
+
+
+def a5_bottom_canvas(margin: int) -> dict[str, Any]:
+    """An A5 page with a note just above its bottom margin (or 10px from the
+    edge when the margin is smaller than the strip)."""
+    bottom = 794 - max(margin, 10)
+    return {
+        "schemaVersion": 1,
+        "page": {"preset": "a5", "width": 559, "height": 794, "heightMode": "fixed", "background": "#FFFFFF", "margin": margin},
+        "elements": [{
+            "id": "note", "type": "text", "x": 24, "y": bottom - 20, "width": 200, "height": 20, "zIndex": 1, "locked": False,
+            "props": {"content": "Note", "fontFamily": "Inter", "fontSize": 12, "fontWeight": 400, "color": "#111111", "align": "left", "lineHeight": 1.3},
+        }],
+    }

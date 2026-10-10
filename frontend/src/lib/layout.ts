@@ -18,6 +18,10 @@ export function tableHeight(metrics: TableRowMetrics, rows: number): number {
 }
 
 export const CONTENT_OVERFLOW = "CONTENT_OVERFLOW";
+// The "Made with Receipt Studio" strip along the bottom of every receipt
+// (components/brand/BrandStrip.tsx; backend layout_service.BRAND_STRIP_HEIGHT):
+// auto pages grow by it, fixed pages keep it inside the bottom margin
+export const BRAND_STRIP_HEIGHT = 16;
 
 // Just what the algorithm reads, so it works on full canvases and on fixtures
 export interface LayoutPage {
@@ -47,7 +51,7 @@ export interface LayoutResult<E extends LayoutElement> {
 //   every element whose top is at/below the table's designed bottom moves by delta
 //   the table becomes designed_h + delta tall
 //   auto pages: page height += delta; fixed pages: anything past the bottom
-//   margin is CONTENT_OVERFLOW
+//   margin (or the brand strip, if taller) is CONTENT_OVERFLOW
 export function applyLayout<E extends LayoutElement>(page: LayoutPage, elements: E[], nRows: number): LayoutResult<E> {
   const fixed = page.heightMode === "fixed";
   const table = elements.find((e) => e.type === "items_table");
@@ -65,7 +69,8 @@ export function applyLayout<E extends LayoutElement>(page: LayoutPage, elements:
     });
   }
 
-  const overflow = fixed && positioned.some((e) => e.y + e.height > page.height - page.margin);
+  const bottomLimit = page.height - Math.max(page.margin, BRAND_STRIP_HEIGHT);
+  const overflow = fixed && positioned.some((e) => e.y + e.height > bottomLimit);
   return {
     elements: positioned,
     pageHeight: fixed ? page.height : page.height + delta,

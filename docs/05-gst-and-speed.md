@@ -32,8 +32,13 @@ The editor:
 - Deleting an element that holds a required particular is refused with the
   reason; required table columns and totals lines can't be removed.
 - Saving is refused (server and client) until every particular is there.
-- Starter templates: GST tax invoice (A4), GST invoice (thermal 80 mm), shop
-  receipt.
+- Starter templates (lib/starterTemplates.ts, laid out by lib/templateBuilder.ts):
+  ten receipts (shop, café, restaurant, bakery, salon, clinic, tuition, house
+  rent, gym, freelancer) and ten GST invoices (general A4, thermal counter,
+  restaurant, pharmacy, electronics, wholesale B2B, IT services, boutique,
+  hotel, auto workshop), across thermal, A5 and A4. The gallery previews each
+  with made-up sample data; the tests check every one is complete, overlap-free,
+  fits 10 (A5) / 15 (A4) items, and is issued and rendered by the server.
 
 ### Rules applied when an invoice is issued (POST /receipts)
 - The supplier's name, address and GSTIN come from Settings (all three

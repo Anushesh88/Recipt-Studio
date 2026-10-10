@@ -1,4 +1,6 @@
 import React, { useRef, useEffect, useCallback } from "react";
+import { BrandStrip } from "../brand/BrandStrip";
+import { BRAND_STRIP_HEIGHT } from "../../lib/layout";
 import { useDroppable } from "@dnd-kit/core";
 import { useEditorStore } from "../../store/editorStore";
 import { CanvasElementNode } from "./CanvasElementNode";
@@ -225,6 +227,12 @@ export const Canvas: React.FC = () => {
               {elementIds ? elementIds.split(",").map((id) => (
                 <CanvasElementNode key={id} id={id} />
               )) : null}
+              {/* Printed on every receipt: below a thermal page, in a fixed page's bottom margin */}
+              <BrandStrip
+                top={page.heightMode === "auto" ? page.height : page.height - BRAND_STRIP_HEIGHT}
+                width={page.width}
+                background={page.heightMode === "auto" ? page.background : undefined}
+              />
             </div>
           </div>
         </div>

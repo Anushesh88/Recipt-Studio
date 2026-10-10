@@ -8,7 +8,7 @@ shared/fixtures/layout_cases.json.
     every element whose top is at/below the table's designed bottom moves by delta
     the table becomes designed_h + delta tall
     auto pages: page height += delta; fixed pages: anything past the bottom
-    margin is CONTENT_OVERFLOW
+    margin (or the "Made with Receipt Studio" strip, if taller) is CONTENT_OVERFLOW
 """
 import math
 from collections.abc import Mapping, Sequence
@@ -16,6 +16,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 CONTENT_OVERFLOW = "CONTENT_OVERFLOW"
+# The "Made with Receipt Studio" strip along the bottom of every receipt: auto
+# pages grow by it, fixed pages keep it inside the bottom margin
+BRAND_STRIP_HEIGHT = 16
 
 
 class ContentOverflowError(Exception):
@@ -69,9 +72,8 @@ def apply_layout(
             elif original["y"] >= table_bottom:
                 element["y"] = original["y"] + delta
 
-    overflow = fixed and any(
-        e["y"] + e["height"] > page["height"] - page["margin"] for e in positioned
-    )
+    bottom_limit = page["height"] - max(page["margin"], BRAND_STRIP_HEIGHT)
+    overflow = fixed and any(e["y"] + e["height"] > bottom_limit for e in positioned)
     return LayoutResult(
         elements=positioned,
         page_height=page["height"] if fixed else page["height"] + delta,

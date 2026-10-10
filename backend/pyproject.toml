@@ -21,6 +21,7 @@ dependencies = [
     "jinja2>=3.1.4",
     "python-multipart>=0.0.9",
     "bcrypt<4.0.0",
+    "google-auth[requests]>=2.30.0",  # verifies "Sign in with Google" ID tokens
 ]
 
 [project.optional-dependencies]
@@ -41,8 +42,8 @@ strict = true
 exclude = ["alembic"]
 
 [[tool.mypy.overrides]]
-# WeasyPrint ships no type information
-module = ["weasyprint", "weasyprint.*"]
+# WeasyPrint and google-auth ship no (complete) type information
+module = ["weasyprint", "weasyprint.*", "google.*"]
 ignore_missing_imports = true
 
 [tool.ruff]

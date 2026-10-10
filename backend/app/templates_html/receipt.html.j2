@@ -79,6 +79,10 @@
   {%- endif %}
   </div>
 {%- endfor %}
+  {#- Every receipt carries the app's name (BrandStrip in ReceiptPreview.tsx) #}
+  <div class="abs" data-brand="" style="left: 0; top: {{ brand.top }}px; width: {{ page.width }}px; height: {{ brand.height }}px; line-height: {{ brand.height }}px; font-family: 'Inter', sans-serif; font-size: {{ brand.font_size }}px; font-weight: 500; color: {{ brand.color }}; text-align: center; white-space: nowrap;">
+    {{ brand.text }}
+  </div>
 </div>
 </body>
 </html>

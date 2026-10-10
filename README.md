@@ -7,7 +7,12 @@ Templates are plain receipts or GST tax invoices (CGST rule 46: GSTINs, HSN
 codes, CGST / SGST / IGST, per-financial-year numbering) whose required fields
 can't be deleted by accident. Saved customers and items, "Use again", starter
 templates and Share make repeat invoices quick; see
-[docs/05-gst-and-speed.md](docs/05-gst-and-speed.md).
+[docs/05-gst-and-speed.md](docs/05-gst-and-speed.md). The Templates page has
+20 ready-made templates (10 receipts, 10 GST invoices) for different kinds of
+business, each previewed with sample data.
+
+Sign in with an email and password, or with Google (see
+[Sign in with Google](#sign-in-with-google)).
 
 - `frontend/`: React + Vite app (editor, generate form, history, settings)
 - `backend/`: FastAPI API, numbering, totals, and the WeasyPrint renderer
@@ -38,6 +43,25 @@ npm run dev
 ```
 
 Open http://localhost:5173, register, and create a template.
+
+## Sign in with Google
+
+The Google button appears on the login page once the backend has a client ID:
+
+1. In the [Google Cloud console](https://console.cloud.google.com/apis/credentials),
+   create a project, set up the OAuth consent screen (External), then
+   **Create credentials > OAuth client ID > Web application**.
+2. Under **Authorized JavaScript origins** add `http://localhost:5173` and
+   your hosted frontend's address (e.g. `https://your-app.vercel.app`). No
+   redirect URIs are needed.
+3. Put the client ID in `backend/.env` (and the host's environment variables):
+   `GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com`, then restart the
+   backend.
+
+The backend checks each Google ID token (signature, expiry, audience) and
+only accepts addresses Google has verified. A first Google sign-in creates the
+account, or joins the existing account with that email; that account's
+password then stops working, since emails aren't verified at registration.
 
 ## Docker
 

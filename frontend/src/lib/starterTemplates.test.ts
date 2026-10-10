@@ -4,7 +4,9 @@ import { canvasSchema } from "../schema/templateSchema";
 import { missingParticulars } from "./gst";
 import { SAMPLE_GST_TAX_ROWS } from "./gstTemplate";
 import { totalsRows } from "./elementLayout";
-import { tableHeight } from "./layout";
+import { applyLayout, tableHeight } from "./layout";
+import { findVariables } from "./variables";
+import { starterPreview, starterValues } from "../components/templates/starterPreview";
 import { ITEMS_TABLE_SAMPLE_ROWS } from "./units";
 
 describe("starter templates", () => {
@@ -36,5 +38,36 @@ describe("starter templates", () => {
         if (!sideBySide) expect(a.y + a.height, `${a.id} runs into ${b.id}`).toBeLessThanOrEqual(b.y);
       }
     }
+  });
+});
+
+describe("starter template gallery", () => {
+  it("has ten receipts and ten GST invoices, each for a different business", () => {
+    const of = (type: string) => STARTER_TEMPLATES.filter((t) => t.canvas.documentType === type);
+    expect([of("receipt").length, of("gst_invoice").length]).toEqual([10, 10]);
+    expect(new Set(STARTER_TEMPLATES.map((t) => t.id)).size).toBe(20);
+    for (const kind of ["receipt", "gst_invoice"]) expect(new Set(of(kind).map((t) => t.business)).size).toBe(10);
+    // Every page size is represented
+    expect(new Set(STARTER_TEMPLATES.map((t) => t.canvas.page.preset))).toEqual(new Set(["thermal80", "a5", "a4"]));
+  });
+
+  it.each(STARTER_TEMPLATES)("$name: its sample fills the form without errors", (starter) => {
+    const { model, values } = starterValues(starter);
+    const result = model.schema.safeParse(values);
+    expect(result.success, JSON.stringify(!result.success && result.error.issues)).toBe(true);
+    const preview = starterPreview(starter);
+    expect(preview.totals.total).toMatch(/^\d+\.\d{2}$/);
+    // Every variable the template prints has a value (a walk-in GST buyer may be blank)
+    const optional = new Set(["receipt.notes", ...(model.gst ? ["customer.name", "customer.address"] : [])]);
+    for (const [key, value] of Object.entries(preview.values)) {
+      if (findVariables(JSON.stringify(starter.canvas)).includes(key) && !optional.has(key)) expect(value, key).not.toBe("");
+    }
+  });
+
+  // Room for a realistic number of line items before the page is full
+  const MIN_ITEMS = { a5: 10, a4: 15 } as const;
+  it.each(STARTER_TEMPLATES.filter((t) => t.canvas.page.heightMode === "fixed"))("$name: fits its page with plenty of line items", ({ canvas }) => {
+    const rows = MIN_ITEMS[canvas.page.preset as keyof typeof MIN_ITEMS];
+    expect(applyLayout(canvas.page, canvas.elements, rows).error).toBeNull();
   });
 });

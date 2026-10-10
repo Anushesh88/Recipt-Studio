@@ -252,6 +252,10 @@ def element_model(
     return model
 
 
+# Mirrors BrandStrip in frontend/src/components/preview/ReceiptPreview.tsx
+BRAND = {"text": "Made with Receipt Studio", "font_size": 8, "color": "#9CA3AF"}
+
+
 def build_html(
     canvas: Mapping[str, Any], content: ReceiptContent, assets: Mapping[str, str]
 ) -> tuple[str, layout_service.LayoutResult]:
@@ -262,9 +266,13 @@ def build_html(
         raise ContentOverflowError(str(page.get("preset", "")))
     # segno can't encode more than a QR code holds (QrContentTooLongError)
     qr_service.check_codes(canvas["elements"], content.values)
+    # Auto-height pages grow to fit the brand strip; fixed pages hold it in the margin
+    strip = layout_service.BRAND_STRIP_HEIGHT
+    page_height = layout.page_height + (strip if page["heightMode"] == "auto" else 0)
     html = _env.get_template("receipt.html.j2").render(
         page=page,
-        page_height=css_number(layout.page_height),
+        page_height=css_number(page_height),
+        brand={"top": css_number(page_height - strip), "height": strip, **BRAND},
         fonts=font_faces(),
         elements=[element_model(e, content, assets) for e in layout.elements],
     )

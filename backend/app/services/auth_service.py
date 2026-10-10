@@ -1,4 +1,5 @@
-"""Accounts: registration, login tokens, and per-user receipt settings."""
+"""Accounts: registration, sign-in (password or Google), login tokens, and
+per-user receipt settings."""
 from datetime import timedelta
 
 from jose import JWTError, jwt
@@ -9,6 +10,7 @@ from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
 from app.models.user import User
 from app.schemas.auth import AccountUpdate
+from app.services.google_auth_service import GoogleIdentity
 
 
 class EmailTakenError(Exception):
@@ -34,8 +36,29 @@ async def register_user(db: AsyncSession, email: str, password: str) -> User:
 
 async def authenticate(db: AsyncSession, email: str, password: str) -> User | None:
     user = await get_user_by_email(db, email)
-    if user is None or not verify_password(password, user.password_hash):
+    if user is None or user.password_hash is None or not verify_password(password, user.password_hash):
         return None
+    return user
+
+
+async def google_sign_in(db: AsyncSession, identity: GoogleIdentity) -> User:
+    """The account for a verified Google identity: the one already linked to
+    it, else the one with its email (now linked), else a new one."""
+    result = await db.execute(select(User).where(User.google_sub == identity.sub))
+    user = result.scalars().first()
+    if user is None:
+        user = await get_user_by_email(db, identity.email)
+        if user is None:
+            user = User(email=identity.email, password_hash=None)
+            db.add(user)
+        else:
+            # Emails aren't verified at registration, so whoever set this
+            # password may not own the address. Google has verified it: the
+            # password stops working, and the owner signs in with Google.
+            user.password_hash = None
+        user.google_sub = identity.sub
+    await db.commit()
+    await db.refresh(user)
     return user
 
 

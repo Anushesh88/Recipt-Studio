@@ -43,6 +43,16 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     email: str | None = None
 
+class GoogleCredential(BaseModel):
+    """POST /auth/google: the ID token Google Identity Services gave the browser."""
+    credential: Annotated[str, StringConstraints(min_length=1, max_length=4096)]
+
+
+class AuthProviders(BaseModel):
+    """GET /auth/providers: which sign-in options the login page offers."""
+    google_client_id: str | None
+
+
 class UserCreate(BaseModel):
     email: Email
     password: Password
@@ -57,6 +67,9 @@ class UserResponse(BaseModel):
     gstin: str | None = None
     invoice_prefix: str
     invoicing_mode: InvoicingMode | None = None  # None until the welcome question is answered
+    # How the account signs in
+    has_password: bool
+    google_linked: bool
 
     model_config = ConfigDict(from_attributes=True)
 

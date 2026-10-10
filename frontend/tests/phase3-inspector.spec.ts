@@ -95,9 +95,12 @@ test.describe('Phase 3 inspector', () => {
 
     await editor.pressSequentially(', table ');
     await page.locator('[data-inline-editor]').getByRole('button', { name: 'Insert variable' }).click();
-    await page.locator('[data-variable-menu]').getByPlaceholder('table_no').fill('Table 1');
-    await expect(page.locator('[data-variable-menu]')).toContainText('lowercase letters and underscores');
-    await page.locator('[data-variable-menu]').getByPlaceholder('table_no').fill('table_no');
+    const fieldName = page.locator('[data-variable-menu]').getByLabel('Add your own field');
+    await fieldName.fill('Table 1');
+    await expect(page.locator('[data-variable-menu]')).toContainText('Use letters and spaces only');
+    // A plain name is turned into a field key
+    await fieldName.fill('Table no');
+    await expect(page.locator('[data-variable-menu]')).toContainText('Adds {{custom.table_no}}');
     await page.locator('[data-variable-menu]').getByRole('button', { name: 'Add', exact: true }).click();
     await expect(editor).toHaveValue('Thanks {{customer.name}}, table {{custom.table_no}}');
 
