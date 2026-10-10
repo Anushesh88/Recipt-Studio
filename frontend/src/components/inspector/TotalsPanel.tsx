@@ -1,8 +1,8 @@
 import React from "react";
 import type { CanvasElement } from "../../schema/templateSchema";
-import { TOTALS_FIELDS } from "../../lib/units";
+import { CURRENCY_SYMBOL_MAX_LENGTH, FONT_SIZE_RANGE, TOTALS_FIELDS } from "../../lib/units";
 import { CheckboxField, Field, NumberField, Section, SelectField, TextField } from "./fields";
-import { FONT_OPTIONS, FONT_SIZE } from "./options";
+import { FONT_OPTIONS } from "./options";
 import { usePropUpdater } from "./usePropUpdater";
 
 type TotalsElement = Extract<CanvasElement, { type: "totals" }>;
@@ -34,11 +34,11 @@ export const TotalsPanel: React.FC<{ element: TotalsElement }> = ({ element }) =
           </div>
         </Field>
         <CheckboxField id="totals-emphasize" label="Emphasize the total" checked={props.emphasizeTotal} onChange={(v) => set("emphasizeTotal", v)} />
-        <TextField id="totals-currency" label="Currency symbol" value={props.currencySymbol} maxLength={4} onChange={(v) => set("currencySymbol", v)} />
+        <TextField id="totals-currency" label="Currency symbol" value={props.currencySymbol} maxLength={CURRENCY_SYMBOL_MAX_LENGTH} onChange={(v) => set("currencySymbol", v)} />
       </Section>
       <Section title="Typography">
         <SelectField id="totals-font" label="Font" value={props.fontFamily} options={FONT_OPTIONS} onChange={(v) => set("fontFamily", v)} />
-        <NumberField id="totals-size" label="Size (px)" value={props.fontSize} {...FONT_SIZE} live onCommit={(v) => set("fontSize", v)} />
+        <NumberField id="totals-size" label="Size (px)" value={props.fontSize} {...FONT_SIZE_RANGE} live onCommit={(v) => set("fontSize", v)} />
       </Section>
     </>
   );

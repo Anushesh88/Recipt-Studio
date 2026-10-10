@@ -21,12 +21,22 @@ import { useTemplatePersistence } from "../components/editor/useTemplatePersiste
 import { useEditorStore } from "../store/editorStore";
 import { useTemplate } from "../api/templates";
 import { apiErrorMessage } from "../api/client";
-import { BLANK_CANVAS, DEFAULT_ELEMENTS, GRID_SIZE, TOAST_DURATION_MS, UNTITLED_TEMPLATE } from "../lib/units";
+import {
+  BLANK_CANVAS,
+  DEFAULT_ELEMENTS,
+  DRAG_ACTIVATION_DISTANCE_PX,
+  GRID_SIZE,
+  TOAST_DURATION_MS,
+  TOUCH_ACTIVATION_DELAY_MS,
+  TOUCH_ACTIVATION_TOLERANCE_PX,
+  UNTITLED_TEMPLATE,
+} from "../lib/units";
 import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
 import { canvasSchema, type Canvas as CanvasDocument, type CanvasElement } from "../schema/templateSchema";
 
-if (typeof window !== "undefined") {
+// Test hook for the Playwright specs; dev builds only
+if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as unknown as Window & { __editorStore?: typeof useEditorStore }).__editorStore = useEditorStore;
 }
 
@@ -90,8 +100,8 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
   const pointerRef = useRef<{ x: number; y: number } | null>(null);
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE_PX } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: TOUCH_ACTIVATION_DELAY_MS, tolerance: TOUCH_ACTIVATION_TOLERANCE_PX } })
   );
 
   useEffect(() => {

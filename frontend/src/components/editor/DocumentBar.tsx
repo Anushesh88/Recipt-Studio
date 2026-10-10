@@ -4,6 +4,7 @@ import { CopyPlus, ReceiptText, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { TEMPLATE_NAME_MAX_LENGTH } from "../../lib/units";
 
 // Template name, save state and the Save / Save as / Generate actions
 export const DocumentBar: React.FC<{
@@ -28,7 +29,7 @@ export const DocumentBar: React.FC<{
         id={nameId}
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
-        maxLength={120}
+        maxLength={TEMPLATE_NAME_MAX_LENGTH}
         className="h-8 w-56 font-medium"
       />
       <span role="status" aria-label="Save status" className={`text-xs whitespace-nowrap ${dirty ? "text-amber-700" : "text-muted-foreground"}`}>
@@ -61,7 +62,7 @@ export const DocumentBar: React.FC<{
             }}
           >
             <label htmlFor={`${nameId}-save-as`} className="text-xs font-medium">Save a copy as</label>
-            <Input id={`${nameId}-save-as`} value={saveAsName} maxLength={120} onChange={(e) => setSaveAsName(e.target.value)} />
+            <Input id={`${nameId}-save-as`} value={saveAsName} maxLength={TEMPLATE_NAME_MAX_LENGTH} onChange={(e) => setSaveAsName(e.target.value)} />
             <Button type="submit" size="sm" className="w-full">Save copy</Button>
           </form>
         </PopoverContent>

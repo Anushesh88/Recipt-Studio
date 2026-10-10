@@ -25,13 +25,13 @@ export const Generate: React.FC = () => {
 
   return (
     <div className="flex h-screen flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-white px-4">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-border bg-white px-4 py-2">
         <Link to="/templates" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
           <ChevronLeft className="size-4" />
           Templates
         </Link>
         <div className="h-6 w-px bg-gray-300" />
-        <h1 className="text-lg font-semibold">Generate receipt{query.data ? ` · ${query.data.name}` : ""}</h1>
+        <h1 className="min-w-0 truncate text-base font-semibold sm:text-lg">Generate receipt{query.data ? ` · ${query.data.name}` : ""}</h1>
         {templateId && (
           <Link to={`/editor/${templateId}`} className="ml-auto text-sm text-blue-600 hover:underline">Edit template</Link>
         )}

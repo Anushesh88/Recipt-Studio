@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { HEX_COLOR_LENGTH } from "../../lib/units";
 
 export const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
   <section className="space-y-3 border-b border-border px-4 py-3">
@@ -106,7 +107,7 @@ export const ColorField: React.FC<{ id: string; label: string; value: string; on
         <Input
           id={id}
           value={shown}
-          maxLength={7}
+          maxLength={HEX_COLOR_LENGTH}
           className="h-8 font-mono text-xs uppercase"
           aria-invalid={!HEX_COLOR.test(shown)}
           onChange={(e) => {

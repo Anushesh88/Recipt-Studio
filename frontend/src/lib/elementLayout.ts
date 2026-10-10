@@ -1,15 +1,19 @@
 // Inner layout of elements that draw several parts. The PDF template may only
 // use absolute positioning (no flexbox / grid), so both the React components and
 // backend render_service.py place every part at these explicit offsets.
-// Change them together.
+// Change them together (the numbers live in lib/units.ts).
 import type { CanvasElement } from "../schema/templateSchema";
+import {
+  SIGNATURE_LABEL_GAP,
+  SIGNATURE_LABEL_HEIGHT,
+  SIGNATURE_LINE_THICKNESS,
+  TOTALS_EMPHASIS_SCALE,
+  TOTALS_LINE_HEIGHT,
+  TOTALS_ROW_GAP,
+} from "./units";
 
 type TotalsProps = Extract<CanvasElement, { type: "totals" }>["props"];
 type TotalsLine = TotalsProps["show"][number];
-
-export const TOTALS_LINE_HEIGHT = 1.4;
-export const TOTALS_ROW_GAP = 4;
-export const TOTALS_EMPHASIS_SCALE = 1.2;
 
 export interface TotalsRow {
   line: TotalsLine;
@@ -32,16 +36,17 @@ export function totalsRows(props: TotalsProps): TotalsRow[] {
   });
 }
 
-export const SIGNATURE_LABEL_FONT_SIZE = 12;
-export const SIGNATURE_LABEL_HEIGHT = 16;
-export const SIGNATURE_LINE_THICKNESS = 2;
-export const SIGNATURE_LABEL_GAP = 4;
-
 // Label along the bottom, the line just above it, the image filling the rest
 export function signatureLayout(height: number) {
   const labelTop = height - SIGNATURE_LABEL_HEIGHT;
   const lineTop = labelTop - SIGNATURE_LABEL_GAP - SIGNATURE_LINE_THICKNESS;
   return { imageHeight: Math.max(0, lineTop), lineTop, labelTop };
+}
+
+// "#RRGGBB" + alpha -> rgba(), which both browsers and WeasyPrint understand
+export function withAlpha(hex: string, alpha: number): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // The divider's line is centred vertically in its box

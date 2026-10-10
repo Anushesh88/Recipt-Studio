@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useEditorStore } from "../../store/editorStore";
 import type { CanvasElement } from "../../schema/templateSchema";
-import { fontStack } from "../../lib/units";
+import { INLINE_TOOLBAR_GAP_PX, fontStack } from "../../lib/units";
 import { InsertVariableMenu } from "../variables/InsertVariableMenu";
 import { useVariableInsertion } from "../variables/useVariableInsertion";
 
 type TextElement = Extract<CanvasElement, { type: "text" }>;
-
-const TOOLBAR_GAP_PX = 4;
 
 // Textarea laid exactly over a text element (same box and typography), shown on
 // double-click. Edits go straight to the store as one undo step per session.
@@ -56,7 +54,7 @@ export const InlineTextEditor: React.FC<{ element: TextElement }> = ({ element }
         style={{
           position: "absolute",
           left: 0,
-          bottom: `calc(100% + ${TOOLBAR_GAP_PX}px)`,
+          bottom: `calc(100% + ${INLINE_TOOLBAR_GAP_PX}px)`,
           transform: `scale(${1 / zoom})`,
           transformOrigin: "bottom left",
         }}

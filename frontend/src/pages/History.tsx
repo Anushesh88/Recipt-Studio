@@ -13,7 +13,7 @@ export const History: React.FC = () => {
   const { data: receipts, isLoading, isError, error } = useReceipts();
 
   return (
-    <div className="mx-auto max-w-5xl p-8">
+    <div className="mx-auto max-w-5xl p-4 sm:p-8">
       <div className="mb-6 flex items-center gap-3">
         <Link to="/templates" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
           <ChevronLeft className="size-4" />
@@ -31,7 +31,7 @@ export const History: React.FC = () => {
       )}
 
       {receipts && receipts.length > 0 && (
-        <div className="overflow-hidden rounded-lg border border-border bg-white">
+        <div className="overflow-x-auto rounded-lg border border-border bg-white">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs text-muted-foreground">
               <tr>

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { apiClient, apiErrorMessage } from './client';
+import { OBJECT_URL_REVOKE_DELAY_MS } from '../lib/units';
 
 export type ExportFormat = 'pdf' | 'png';
 
@@ -28,7 +29,7 @@ function saveBlob(blob: Blob, filename: string) {
   link.click();
   link.remove();
   // Give the browser a moment to start the download before releasing the URL
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_REVOKE_DELAY_MS);
 }
 
 // Downloads the server-rendered PDF / PNG (the file is fetched with the auth header)

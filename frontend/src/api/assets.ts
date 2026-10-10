@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from './client';
+import { MAX_ASSET_BYTES } from '../lib/units';
 
 export type AssetKind = 'logo' | 'signature' | 'image';
 
@@ -14,7 +15,6 @@ export interface Asset {
 // Mirrors the backend rules (PNG/JPG, <= 2 MB) so users get instant feedback;
 // the server re-checks the actual file contents.
 export const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg'];
-export const MAX_ASSET_BYTES = 2 * 1024 * 1024;
 
 export function validateImageFile(file: File): string | null {
   if (!ACCEPTED_IMAGE_TYPES.includes(file.type)) return 'Only PNG and JPG images are supported.';

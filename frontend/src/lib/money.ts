@@ -5,8 +5,9 @@
 //   line_total = round(qty * unit_price); subtotal = sum; taxable = subtotal - discount
 //   tax = round(taxable * tax_rate); total = taxable + tax   (round = half-up to cents)
 
+import { MONEY_DECIMAL_PLACES as CENT_SCALE } from "./units";
+
 const DECIMAL = /^\d+(\.\d+)?$/;
-const CENT_SCALE = 2;
 
 interface Scaled {
   units: bigint;

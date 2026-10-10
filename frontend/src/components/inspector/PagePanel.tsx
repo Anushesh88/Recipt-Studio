@@ -1,6 +1,7 @@
 import React from "react";
 import { useEditorStore } from "../../store/editorStore";
 import {
+  GRID_SIZE,
   MAX_DESIGN_HEIGHT,
   MIN_DESIGN_HEIGHT,
   PAGE_PRESET_LABELS,
@@ -40,7 +41,7 @@ export const PagePanel: React.FC = () => {
             value={page.height}
             min={MIN_DESIGN_HEIGHT}
             max={MAX_DESIGN_HEIGHT}
-            step={4}
+            step={GRID_SIZE}
             onCommit={(height) => updatePage({ height })}
             hint="Room to lay out elements; it can't go below the lowest element."
           />

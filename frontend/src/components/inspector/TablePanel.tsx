@@ -3,9 +3,17 @@ import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, ArrowRight, Plus, Trash2
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { CanvasElement } from "../../schema/templateSchema";
-import { ITEM_COLUMN_KEYS } from "../../lib/units";
+import {
+  COLUMN_MIN_WIDTH_PERCENT,
+  COLUMN_WIDTH_PRECISION,
+  FONT_SIZE_RANGE,
+  ITEM_COLUMN_KEYS,
+  LINE_HEIGHT_RANGE,
+  PERCENT,
+  ROW_PADDING_RANGE,
+} from "../../lib/units";
 import { CheckboxField, ColorField, NumberField, Section, SegmentedField, SelectField } from "./fields";
-import { FONT_OPTIONS, FONT_SIZE, LINE_HEIGHT } from "./options";
+import { FONT_OPTIONS } from "./options";
 import { usePropUpdater } from "./usePropUpdater";
 
 type TableElement = Extract<CanvasElement, { type: "items_table" }>;
@@ -17,11 +25,8 @@ const ALIGN_OPTIONS = [
   { value: "right", label: "Right", icon: <AlignRight /> },
 ] as const;
 
-const ROW_PADDING = { min: 0, max: 24 } as const;
-const PERCENT = 100;
-const WIDTH_PRECISION = 10000;
 
-const round = (width: number) => Math.round(width * WIDTH_PRECISION) / WIDTH_PRECISION;
+const round = (width: number) => Math.round(width * COLUMN_WIDTH_PRECISION) / COLUMN_WIDTH_PRECISION;
 const totalPercent = (columns: Column[]) => Math.round(columns.reduce((sum, c) => sum + c.width, 0) * PERCENT);
 
 // Rescales widths so they sum to 1 (100%), keeping their proportions
@@ -77,7 +82,7 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
                     id={`col-width-${col.key}`}
                     label="Width %"
                     value={Math.round(col.width * PERCENT)}
-                    min={1}
+                    min={COLUMN_MIN_WIDTH_PERCENT}
                     max={PERCENT}
                     live
                     onCommit={(pct) => updateColumn(i, { width: pct / PERCENT })}
@@ -122,9 +127,9 @@ export const TablePanel: React.FC<{ element: TableElement }> = ({ element }) => 
       <Section title="Typography">
         <SelectField id="table-font" label="Font" value={props.fontFamily} options={FONT_OPTIONS} onChange={(v) => set("fontFamily", v)} />
         <div className="grid grid-cols-3 gap-2">
-          <NumberField id="table-size" label="Size" value={props.fontSize} {...FONT_SIZE} live onCommit={(v) => set("fontSize", v)} />
-          <NumberField id="table-line-height" label="Line h." value={props.lineHeight} {...LINE_HEIGHT} live onCommit={(v) => set("lineHeight", v)} />
-          <NumberField id="table-padding" label="Padding" value={props.rowPadding} {...ROW_PADDING} live onCommit={(v) => set("rowPadding", v)} />
+          <NumberField id="table-size" label="Size" value={props.fontSize} {...FONT_SIZE_RANGE} live onCommit={(v) => set("fontSize", v)} />
+          <NumberField id="table-line-height" label="Line h." value={props.lineHeight} {...LINE_HEIGHT_RANGE} live onCommit={(v) => set("lineHeight", v)} />
+          <NumberField id="table-padding" label="Padding" value={props.rowPadding} {...ROW_PADDING_RANGE} live onCommit={(v) => set("rowPadding", v)} />
         </div>
         <p className="text-xs text-muted-foreground">The table's height follows these: header + sample rows.</p>
         <ColorField id="table-color" label="Color" value={props.color} onChange={(v) => set("color", v)} />

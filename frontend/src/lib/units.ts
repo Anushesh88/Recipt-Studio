@@ -78,6 +78,50 @@ export const TOTALS_FIELDS = [
   { key: "total", label: "Total" },
 ] as const;
 
+// --- Limits (mirrored by the backend schemas) ---------------------------------
+export const FONT_SIZE_RANGE = { min: 6, max: 96 } as const;
+export const LINE_HEIGHT_RANGE = { min: 0.8, max: 3, step: 0.1 } as const;
+export const ROW_PADDING_RANGE = { min: 0, max: 24 } as const;
+export const DIVIDER_MIN_THICKNESS = 1;
+export const TEMPLATE_NAME_MAX_LENGTH = 120;
+export const RECEIPT_NUMBER_MAX_LENGTH = 40;
+export const NOTES_MAX_LENGTH = 1000;
+export const MAX_LINE_ITEMS = 200;
+export const CURRENCY_CODE_LENGTH = 3; // ISO 4217, e.g. USD
+export const DEFAULT_CURRENCY = "USD";
+export const CURRENCY_SYMBOL_MAX_LENGTH = 4;
+export const HEX_COLOR_LENGTH = 7; // "#RRGGBB"
+export const MAX_ASSET_BYTES = 2 * 1024 * 1024; // PNG / JPG uploads
+export const BUSINESS_NAME_MAX_LENGTH = 120;
+export const RECEIPT_PREFIX_MAX_LENGTH = 12;
+// Letters, digits and a few separators (backend ReceiptPrefix)
+export const RECEIPT_PREFIX_PATTERN = /^[A-Za-z0-9 _\-/#.]*$/;
+export const MONEY_DECIMAL_PLACES = 2;
+
+// --- Items table columns ---------------------------------------------------------
+export const PERCENT = 100;
+export const COLUMN_MIN_WIDTH_PERCENT = 1;
+export const COLUMN_WIDTH_PRECISION = 10000; // widths are stored to 4 decimals
+
+// --- Element inner layout (mirrored by backend render_service.py) -----------------
+export const TABLE_DIVIDER_PX = 1;
+export const TABLE_ROW_DIVIDER_ALPHA = 0.25;
+export const TOTALS_LINE_HEIGHT = 1.4;
+export const TOTALS_ROW_GAP = 4;
+export const TOTALS_EMPHASIS_SCALE = 1.2;
+export const SIGNATURE_LABEL_FONT_SIZE = 12;
+export const SIGNATURE_LABEL_HEIGHT = 16;
+export const SIGNATURE_LINE_THICKNESS = 2;
+export const SIGNATURE_LABEL_GAP = 4;
+
+// --- Editor interaction -----------------------------------------------------------
+export const DRAG_ACTIVATION_DISTANCE_PX = 5; // pointer travel before a palette drag starts
+export const TOUCH_ACTIVATION_DELAY_MS = 250; // long-press before a touch drag starts
+export const TOUCH_ACTIVATION_TOLERANCE_PX = 5;
+export const INLINE_TOOLBAR_GAP_PX = 4;
+export const PREVIEW_MAX_WIDTH_PX = 520;
+export const OBJECT_URL_REVOKE_DELAY_MS = 1000; // keep a download's blob URL alive this long
+
 // The editor shows the items table with this many placeholder rows; its default
 // height is exactly header + these rows, per the Layout Algorithm.
 export const ITEMS_TABLE_SAMPLE_ROWS = 3;

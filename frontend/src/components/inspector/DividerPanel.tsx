@@ -1,6 +1,6 @@
 import React from "react";
 import type { CanvasElement } from "../../schema/templateSchema";
-import { MIN_ELEMENT_SIZE } from "../../lib/units";
+import { DIVIDER_MIN_THICKNESS, MIN_ELEMENT_SIZE } from "../../lib/units";
 import { ColorField, NumberField, Section, SegmentedField } from "./fields";
 import { usePropUpdater } from "./usePropUpdater";
 
@@ -22,7 +22,7 @@ export const DividerPanel: React.FC<{ element: DividerElement }> = ({ element })
         id="divider-thickness"
         label="Thickness (px)"
         value={props.thickness}
-        min={1}
+        min={DIVIDER_MIN_THICKNESS}
         // the divider's box is MIN_ELEMENT_SIZE tall
         max={MIN_ELEMENT_SIZE}
         live

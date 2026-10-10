@@ -13,5 +13,3 @@ export const FONT_WEIGHT_OPTIONS: SelectOption<string>[] = FONT_WEIGHTS.map((w) 
   label: `${w.label} (${w.value})`,
 }));
 
-export const FONT_SIZE = { min: 6, max: 96 } as const; // schema limits
-export const LINE_HEIGHT = { min: 0.8, max: 3, step: 0.1 } as const;

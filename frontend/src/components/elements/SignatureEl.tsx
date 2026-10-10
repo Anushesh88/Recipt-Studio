@@ -1,12 +1,8 @@
 import React from "react";
 import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
 import { fontStack } from "../../lib/units";
-import {
-  SIGNATURE_LABEL_FONT_SIZE,
-  SIGNATURE_LABEL_HEIGHT,
-  SIGNATURE_LINE_THICKNESS,
-  signatureLayout,
-} from "../../lib/elementLayout";
+import { SIGNATURE_LABEL_FONT_SIZE, SIGNATURE_LABEL_HEIGHT, SIGNATURE_LINE_THICKNESS } from "../../lib/units";
+import { signatureLayout } from "../../lib/elementLayout";
 
 // `assetSrc` is the resolved URL of props.assetId (fetched by the caller).
 // Parts are placed absolutely (lib/elementLayout.ts), mirrored by receipt.html.j2.

@@ -8,9 +8,8 @@ import { CUSTOM_PREFIX, extractVariables, variableKind, variableLabel, type Vari
 import { computeTotals, percentToFraction, type Totals } from "../../lib/money";
 import type { TableRow } from "../elements/TableEl";
 import type { TotalsValues } from "../elements/TotalsEl";
+import { DEFAULT_CURRENCY, MAX_LINE_ITEMS, NOTES_MAX_LENGTH, RECEIPT_NUMBER_MAX_LENGTH } from "../../lib/units";
 
-export const MAX_LINE_ITEMS = 200; // backend MAX_LINE_ITEMS
-export const DEFAULT_CURRENCY = "USD";
 
 export interface LineItemValues {
   description: string;
@@ -84,13 +83,13 @@ export function buildFormModel(canvas: Canvas): FormModel {
           : z.string(),
       }),
       receipt: z.object({
-        number: z.string().trim().max(40, "Use at most 40 characters"),
+        number: z.string().trim().max(RECEIPT_NUMBER_MAX_LENGTH, `Use at most ${RECEIPT_NUMBER_MAX_LENGTH} characters`),
         date: usedSet.has("receipt.date")
           ? required("Receipt date").regex(ISO_DATE, "Pick a date")
           : z.string(),
         payment_method: field("receipt.payment_method"),
         currency: z.string().trim().regex(CURRENCY, "Use a 3-letter currency code, e.g. USD"),
-        notes: z.string().max(1000, "Use at most 1000 characters"),
+        notes: z.string().max(NOTES_MAX_LENGTH, `Use at most ${NOTES_MAX_LENGTH} characters`),
       }),
       custom: z.object(Object.fromEntries(customKeys.map((key) => [key, required(variableLabel(CUSTOM_PREFIX + key))]))),
       items: z

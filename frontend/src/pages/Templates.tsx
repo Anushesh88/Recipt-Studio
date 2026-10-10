@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Trash2 } from 'lucide-react';
+import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '../store/authStore';
 import { createTemplate, deleteTemplate, fetchTemplate, templateKeys, useTemplates, type TemplateSummary } from '../api/templates';
@@ -81,12 +81,15 @@ export default function Templates() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   return (
-    <div className="mx-auto max-w-6xl p-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="mx-auto max-w-6xl p-4 sm:p-8">
+      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">My Templates</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link to="/history"><HistoryIcon />Receipt history</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/settings"><SettingsIcon />Settings</Link>
           </Button>
           <Button variant="ghost" onClick={() => setToken(null)}>
             <LogOut />

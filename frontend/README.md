@@ -1,32 +1,49 @@
-# React + TypeScript + Vite
+# Receipt Studio Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 + TypeScript + Vite. Tailwind v4 with shadcn/ui, Zustand for the
+editor, TanStack Query for the API, React Hook Form + Zod for forms.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm install
+npm run dev          # http://localhost:5173
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+The app talks to the backend at `http://localhost:8000`. To use another
+address, copy `.env.example` to `.env.local` and set `VITE_API_URL`.
+
+## Pages
+
+- `/templates`: your templates (create, duplicate, delete)
+- `/editor/:id`: the drag-and-drop template editor
+- `/generate/:id`: fill in a receipt from a template, with a live preview
+- `/history`: every receipt generated, with PDF/PNG re-download
+- `/settings`: business name, receipt number prefix, sequential or random IDs
+
+## Checks
+
+```bash
+npx tsc -b           # types
+npm run lint         # oxlint
+npx vitest run       # unit tests, including the shared fixtures in ../shared
+npm run build
+```
+
+Browser tests (Playwright, in `tests/*.spec.ts`) run against both dev servers,
+so start the backend (see `../backend/README.md`) and `npm run dev` first:
+
+```bash
+npx playwright install chromium   # once
+npx playwright test
+```
+
+They register throwaway `@example.com` accounts in the local dev database.
+
+## Notes
+
+- `src/lib/units.ts` holds every size, limit and layout number; the backend
+  renderer mirrors the element layout numbers, so the preview and the PDF
+  match.
+- Fonts are bundled with `@fontsource`; the backend copies are built from the
+  same files by `backend/scripts/sync_fonts.py`.

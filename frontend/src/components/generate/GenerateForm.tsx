@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useFieldArray, useForm, useWatch, type FieldErrors, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -14,18 +14,19 @@ import { apiErrorMessage } from "../../api/client";
 import { variableLabel, CUSTOM_PREFIX } from "../../lib/variables";
 import { ReceiptPreview } from "../preview/ReceiptPreview";
 import { ExportButtons } from "../receipts/ExportButtons";
+import { useAccount } from "../../api/account";
+import { useElementWidth } from "./useElementWidth";
+import { CURRENCY_CODE_LENGTH, MAX_LINE_ITEMS, PREVIEW_MAX_WIDTH_PX } from "../../lib/units";
 import {
   buildFormModel,
   emptyLineItem,
   previewFromForm,
   previewFromReceipt,
   toPayload,
-  MAX_LINE_ITEMS,
   type BuiltinField,
   type GenerateValues,
 } from "./formModel";
 
-const PREVIEW_MAX_WIDTH = 520;
 const COMMON_CURRENCIES = ["USD", "EUR", "GBP", "INR", "CAD", "AUD", "JPY", "CHF", "SGD", "AED"];
 const PAYMENT_METHODS = ["Cash", "Card", "Bank transfer", "UPI", "Mobile wallet", "Cheque"];
 
@@ -55,19 +56,29 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
   const queryClient = useQueryClient();
   const model = useMemo(() => buildFormModel(canvas), [canvas]);
   const nextNumber = useNextNumber();
+  const account = useAccount();
+  const [previewRef, previewWidth] = useElementWidth<HTMLDivElement>();
   const [created, setCreated] = useState<ReceiptRecord | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   // Errors show from the first submit on (then update as you type). Validating on
   // blur made messages appear mid-click and shift buttons out from under the pointer.
   const form = useForm<GenerateValues>({ resolver: zodResolver(model.schema), defaultValues: model.defaults });
-  const { register, control, handleSubmit, formState, setError, reset, getValues } = form;
+  const { register, control, handleSubmit, formState, setError, reset, getValues, setValue } = form;
+
+  // Business name comes from Settings unless the user already typed one
+  const accountBusiness = account.data?.business_name;
+  useEffect(() => {
+    if (accountBusiness && !getValues("business.name")) setValue("business.name", accountBusiness);
+  }, [accountBusiness, getValues, setValue]);
   const items = useFieldArray({ control, name: "items" });
   const watched = useWatch({ control }) as GenerateValues;
 
   const autoNumber = nextNumber.data?.mode === "sequential" ? nextNumber.data.next_number : null;
   const preview = created ? previewFromReceipt(created) : previewFromForm(watched, autoNumber);
-  const scale = Math.min(1, PREVIEW_MAX_WIDTH / canvas.page.width);
+  // Fit the page to the preview column (narrow on phones), never above 100%
+  const fitWidth = previewWidth > 0 ? Math.min(previewWidth, PREVIEW_MAX_WIDTH_PX) : PREVIEW_MAX_WIDTH_PX;
+  const scale = Math.min(1, fitWidth / canvas.page.width);
   const err = (path: string) => errorAt(formState.errors, path);
 
   const onSubmit = async (values: GenerateValues) => {
@@ -127,8 +138,8 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="w-[34rem] shrink-0 overflow-y-auto border-r border-border bg-gray-50 p-4">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
+      <div className="w-full border-b border-border bg-gray-50 p-4 lg:w-[34rem] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
         {created ? (
           <div className="space-y-4">
             <Section title="Receipt created">
@@ -172,7 +183,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="field-currency">Currency</Label>
-                  <Input id="field-currency" list="currencies" maxLength={3} className="uppercase" {...register("receipt.currency")} />
+                  <Input id="field-currency" list="currencies" maxLength={CURRENCY_CODE_LENGTH} className="uppercase" {...register("receipt.currency")} />
                   <FieldError message={err("receipt.currency")} />
                 </div>
               </div>
@@ -198,14 +209,15 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
 
             <Section title="Line items">
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_4.5rem_6rem_5rem_2rem] text-xs text-muted-foreground">
+                <div className="hidden grid-cols-[1fr_4.5rem_6rem_5rem_2rem] gap-2 text-xs text-muted-foreground sm:grid">
                   <span>Description</span><span>Qty</span><span>Unit price</span><span className="text-right">Total</span>
                 </div>
                 {items.fields.map((field, index) => {
                   const line = preview.rows[index]?.line_total ?? "—";
                   return (
-                    <div key={field.id} className="grid grid-cols-[1fr_4.5rem_6rem_5rem_2rem] items-start gap-2" data-line-item={index}>
-                      <div>
+                    <div key={field.id} className="grid grid-cols-[4.5rem_6rem_1fr_2rem] items-start gap-2 sm:grid-cols-[1fr_4.5rem_6rem_5rem_2rem]" data-line-item={index}>
+                      {/* full width on phones, first column from sm up */}
+                      <div className="col-span-4 sm:col-span-1">
                         <Input aria-label={`Item ${index + 1} description`} placeholder="Description" {...register(`items.${index}.description`)} />
                         <FieldError message={err(`items.${index}.description`)} />
                       </div>
@@ -262,7 +274,7 @@ export const GenerateForm: React.FC<{ templateId: string; templateName: string; 
         )}
       </div>
 
-      <div className="flex flex-1 justify-center overflow-auto bg-gray-100 p-8">
+      <div ref={previewRef} className="flex flex-1 justify-center bg-gray-100 p-4 lg:overflow-auto lg:p-8">
         <ReceiptPreview canvas={canvas} scale={scale} values={preview.values} rows={preview.rows} totals={preview.totals} />
       </div>
     </div>

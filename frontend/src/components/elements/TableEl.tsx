@@ -1,9 +1,8 @@
 import React from "react";
 import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
-import { ITEMS_TABLE_SAMPLE_ROWS, fontStack } from "../../lib/units";
+import { ITEMS_TABLE_SAMPLE_ROWS, TABLE_DIVIDER_PX, TABLE_ROW_DIVIDER_ALPHA, fontStack } from "../../lib/units";
+import { withAlpha } from "../../lib/elementLayout";
 import { tableRowHeight } from "../../lib/layout";
-
-const DIVIDER_PX = 1;
 
 // Placeholder line items shown in the editor (real items come from the Generate form).
 // They sum to the TotalsEl placeholder subtotal of 35.00.
@@ -32,15 +31,15 @@ export const TableEl = React.forwardRef<HTMLDivElement, ElementProps<"items_tabl
   const cellStyle = (align: React.CSSProperties["textAlign"], divider: string | null): React.CSSProperties => ({
     textAlign: align,
     lineHeight: `${lineBox}px`,
-    padding: `${props.rowPadding}px 0 ${Math.max(0, props.rowPadding - (divider ? DIVIDER_PX : 0))}px`,
+    padding: `${props.rowPadding}px 0 ${Math.max(0, props.rowPadding - (divider ? TABLE_DIVIDER_PX : 0))}px`,
     borderBottom: divider ?? "none",
     whiteSpace: "nowrap",
     overflow: "hidden",
     textOverflow: "ellipsis",
   });
 
-  const headerDivider = props.rowDivider ? `${DIVIDER_PX}px solid ${props.color}` : null;
-  const rowDivider = props.rowDivider ? `${DIVIDER_PX}px dashed ${props.color}40` : null;
+  const headerDivider = props.rowDivider ? `${TABLE_DIVIDER_PX}px solid ${props.color}` : null;
+  const rowDivider = props.rowDivider ? `${TABLE_DIVIDER_PX}px dashed ${withAlpha(props.color, TABLE_ROW_DIVIDER_ALPHA)}` : null;
 
   return (
     <BaseElementWrapper element={element} ref={ref} {...domProps}>

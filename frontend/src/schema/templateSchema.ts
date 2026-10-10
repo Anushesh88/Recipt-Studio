@@ -1,5 +1,12 @@
 import { z } from "zod";
-import { FONT_FAMILIES, MAX_CANVAS_BYTES, MAX_ELEMENTS, MIN_ELEMENT_SIZE } from "../lib/units";
+import {
+  DIVIDER_MIN_THICKNESS,
+  FONT_FAMILIES,
+  FONT_SIZE_RANGE,
+  MAX_CANVAS_BYTES,
+  MAX_ELEMENTS,
+  MIN_ELEMENT_SIZE,
+} from "../lib/units";
 import { findUnknownVariables } from "../lib/variables";
 
 // Text/QR content may only use built-in or custom.* variables
@@ -31,7 +38,7 @@ const baseElement = z.object({
 const textProps = z.object({
   content: variableContent,
   fontFamily,
-  fontSize: z.number().min(6).max(96),
+  fontSize: z.number().min(FONT_SIZE_RANGE.min).max(FONT_SIZE_RANGE.max),
   fontWeight: z.number().default(400),
   color: hexColor,
   align: z.enum(["left", "center", "right", "justify"]).default("left"),
@@ -65,7 +72,7 @@ const itemsTableProps = z.object({
   binding: z.literal("receipt.items"),
   columns: z.array(columnDef),
   fontFamily,
-  fontSize: z.number().min(6).max(96),
+  fontSize: z.number().min(FONT_SIZE_RANGE.min).max(FONT_SIZE_RANGE.max),
   lineHeight: z.number().default(1.3),
   rowPadding: z.number().default(4),
   headerBold: z.boolean().default(true),
@@ -82,7 +89,7 @@ const totalsProps = z.object({
   binding: z.literal("receipt.totals"),
   show: z.array(z.enum(["subtotal", "tax", "discount", "total"])),
   fontFamily,
-  fontSize: z.number().min(6).max(96),
+  fontSize: z.number().min(FONT_SIZE_RANGE.min).max(FONT_SIZE_RANGE.max),
   emphasizeTotal: z.boolean().default(true),
   currencySymbol: z.string().default("$"),
 });
@@ -115,7 +122,7 @@ export const signatureElementSchema = baseElement.extend({
 
 const dividerProps = z.object({
   style: z.enum(["solid", "dashed", "dotted"]),
-  thickness: z.number().min(1),
+  thickness: z.number().min(DIVIDER_MIN_THICKNESS),
   color: hexColor,
 });
 
