@@ -55,3 +55,17 @@ export function getEventClientCoords(event: Event): { x: number; y: number } | n
   }
   return null;
 }
+
+// Where a tapped-in element goes (phones can't drag from a palette): centred,
+// just below everything already on the page, kept on the page
+export function freeSpotBelow(
+  elements: readonly { y: number; height: number }[],
+  size: { width: number; height: number },
+  page: { width: number; height: number; margin: number },
+  gridSize: number,
+): { x: number; y: number } {
+  const bottom = Math.max(page.margin, ...elements.map((e) => e.y + e.height));
+  const x = Math.round((page.width - size.width) / 2 / gridSize) * gridSize;
+  const y = Math.ceil((bottom + gridSize * 2) / gridSize) * gridSize;
+  return clampToPage(x, y, size.width, size.height, page, gridSize);
+}

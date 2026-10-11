@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useReceipts } from "../api/receipts";
 import { apiErrorMessage } from "../api/client";
 import { ExportButtons } from "../components/receipts/ExportButtons";
+import { useIsMobile } from "../lib/useIsMobile";
 
 const formatDate = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "";
@@ -12,15 +13,16 @@ const formatDate = (iso: string | null) =>
 // /history: every receipt generated, newest first, with re-download
 export const History: React.FC = () => {
   const { data: receipts, isLoading, isError, error } = useReceipts();
+  const isMobile = useIsMobile();
 
   return (
     <div className="mx-auto max-w-5xl p-4 sm:p-8">
-      <div className="mb-6 flex items-center gap-3">
+      <div className="mb-6 flex flex-wrap items-center gap-3">
         <Link to="/templates" className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900">
           <ChevronLeft className="size-4" />
           Templates
         </Link>
-        <h1 className="text-3xl font-bold">Receipt history</h1>
+        <h1 className="text-2xl font-bold sm:text-3xl">Receipt history</h1>
         <Button asChild variant="outline" size="sm" className="ml-auto">
           <Link to="/reports"><BarChart3 />Sales report</Link>
         </Button>
@@ -34,7 +36,35 @@ export const History: React.FC = () => {
         </p>
       )}
 
-      {receipts && receipts.length > 0 && (
+      {/* Phones: one card per receipt instead of a wide table */}
+      {receipts && receipts.length > 0 && isMobile && (
+        <ul className="space-y-3">
+          {receipts.map((r) => (
+            <li key={r.id} data-receipt-card={r.receipt_number} className="rounded-lg border border-border bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {r.receipt_number}
+                    {r.document_type === "gst_invoice" && <span className="ml-1.5 rounded bg-emerald-50 px-1 text-xs font-medium text-emerald-800">GST</span>}
+                  </p>
+                  <p className="truncate text-sm text-gray-700">{r.customer_name ?? "No customer name"}</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(r.created_at)}</p>
+                </div>
+                <p className="shrink-0 font-semibold tabular-nums">{r.currency} {r.total_amount}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <ExportButtons receiptId={r.id} receiptNumber={r.receipt_number} size="xs" receipt={r} />
+                {r.template_id && (
+                  <Button asChild size="xs" variant="ghost">
+                    <Link to={`/generate/${r.template_id}?from=${r.id}`} aria-label={`Use ${r.receipt_number} again`}><Repeat />Use again</Link>
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+      {receipts && receipts.length > 0 && !isMobile && (
         <div className="overflow-x-auto rounded-lg border border-border bg-white">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-left text-xs text-muted-foreground">

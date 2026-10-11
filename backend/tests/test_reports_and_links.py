@@ -135,3 +135,21 @@ async def test_share_links_cant_be_forged_or_swapped(client: AsyncClient, login:
     # A login token is signed with the same key, but isn't a receipt link
     login_token = headers["Authorization"].removeprefix("Bearer ")
     assert (await client.get(f"/public/receipts/{login_token}")).status_code == 404
+
+
+def test_share_tokens_are_short_and_tamper_proof() -> None:
+    import uuid as _uuid
+
+    receipt_id = _uuid.uuid4()
+    token = share_service.make_token(receipt_id)
+    assert len(token) == 38 and "." not in token
+    assert share_service.receipt_id_from(token) == receipt_id
+    # Another receipt's id with this signature, or a changed signature, is refused
+    other = share_service.make_token(_uuid.uuid4())
+    assert share_service.receipt_id_from(other[:22] + token[22:]) is None
+    assert share_service.receipt_id_from(token[:-1] + ("A" if token[-1] != "A" else "B")) is None
+    for bad in ("", "x" * 38, "!" * 38, token[:37]):
+        assert share_service.receipt_id_from(bad) is None
+    # Links sent before the short format still work
+    legacy = jwt.encode({"rid": str(receipt_id), "purpose": share_service.PURPOSE}, settings.SECRET_KEY, algorithm="HS256")
+    assert share_service.receipt_id_from(legacy) == receipt_id

@@ -14,7 +14,10 @@ const PALETTE_ITEMS: { type: CanvasElement["type"]; label: string; icon: React.R
   { type: "divider", label: "Divider", icon: <Minus size={18} /> },
 ];
 
-const PaletteItem: React.FC<{ item: typeof PALETTE_ITEMS[0] }> = ({ item }) => {
+type AddElement = (type: CanvasElement["type"]) => void;
+
+// Drag onto the canvas to place it, or click to add it below what's there
+const PaletteItem: React.FC<{ item: typeof PALETTE_ITEMS[0]; onAdd: AddElement }> = ({ item, onAdd }) => {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${item.type}`,
     data: {
@@ -27,6 +30,7 @@ const PaletteItem: React.FC<{ item: typeof PALETTE_ITEMS[0] }> = ({ item }) => {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
+      onClick={() => onAdd(item.type)}
       className={`flex items-center gap-2 p-2 mb-2 bg-white border border-gray-200 rounded cursor-grab hover:bg-gray-50 ${isDragging ? "opacity-50" : ""}`}
     >
       {item.icon}
@@ -54,15 +58,33 @@ export const PaletteDragPreview: React.FC<{ type: CanvasElement["type"]; zoom: n
   );
 };
 
-export const Palette: React.FC = () => {
+export const Palette: React.FC<{ onAdd: AddElement }> = ({ onAdd }) => {
   return (
     <div className="w-64 bg-gray-50 border-r border-gray-200 p-4 flex flex-col h-full overflow-y-auto z-10">
       <h2 className="text-lg font-semibold mb-4 text-gray-800">Elements</h2>
       <div className="flex-1">
         {PALETTE_ITEMS.map((item) => (
-          <PaletteItem key={item.type} item={item} />
+          <PaletteItem key={item.type} item={item} onAdd={onAdd} />
         ))}
       </div>
+      <p className="text-xs text-muted-foreground">Drag onto the page, or click to add.</p>
     </div>
   );
 };
+
+// Phones: big buttons that add the element (no dragging)
+export const PaletteGrid: React.FC<{ onAdd: AddElement }> = ({ onAdd }) => (
+  <div className="grid grid-cols-3 gap-2 p-4">
+    {PALETTE_ITEMS.map((item) => (
+      <button
+        key={item.type}
+        type="button"
+        onClick={() => onAdd(item.type)}
+        className="flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-3 text-sm font-medium active:bg-gray-100"
+      >
+        {item.icon}
+        {item.label}
+      </button>
+    ))}
+  </div>
+);

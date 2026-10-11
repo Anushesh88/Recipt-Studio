@@ -12,10 +12,12 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ChevronLeft, X } from "lucide-react";
-import { Palette, PaletteDragPreview } from "../components/palette/Palette";
+import { ChevronLeft, Plus, Redo2, SlidersHorizontal, Undo2, X } from "lucide-react";
+import { Palette, PaletteDragPreview, PaletteGrid } from "../components/palette/Palette";
 import { Canvas } from "../components/canvas/Canvas";
-import { Inspector } from "../components/inspector/Inspector";
+import { Inspector, InspectorContent } from "../components/inspector/Inspector";
+import { BottomSheet } from "../components/editor/BottomSheet";
+import { useIsMobile } from "../lib/useIsMobile";
 import { DocumentBar } from "../components/editor/DocumentBar";
 import { useTemplatePersistence } from "../components/editor/useTemplatePersistence";
 import { useEditorStore } from "../store/editorStore";
@@ -30,8 +32,10 @@ import {
   TOUCH_ACTIVATION_DELAY_MS,
   TOUCH_ACTIVATION_TOLERANCE_PX,
   UNTITLED_TEMPLATE,
+  ELEMENT_LABELS,
+  MAX_DESIGN_HEIGHT,
 } from "../lib/units";
-import { clampToPage, computeDropCoords, getEventClientCoords } from "../lib/canvasUtils";
+import { clampToPage, computeDropCoords, freeSpotBelow, getEventClientCoords } from "../lib/canvasUtils";
 import { generateId } from "../lib/ids";
 import { canvasSchema, type Canvas as CanvasDocument, type CanvasElement } from "../schema/templateSchema";
 
@@ -125,6 +129,38 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
     setDraggingType(type ?? null);
   };
 
+  const isMobile = useIsMobile();
+  const [sheet, setSheet] = useState<"add" | "edit" | null>(null);
+  const selectedType = useEditorStore((state) => state.elements.find((el) => el.id === state.selectedId)?.type);
+  // Phones: opening the Edit sheet brings the selected element above it
+  useEffect(() => {
+    if (sheet !== "edit" || !selectedId) return;
+    document.querySelector(`#canvas [data-element-id="${CSS.escape(selectedId)}"]`)?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, [sheet, selectedId]);
+
+  const allowed = (type: CanvasElement["type"]) => {
+    if (type === "items_table" && elements.some((el) => el.type === "items_table")) {
+      setToast("Only one items table is allowed.");
+      return false;
+    }
+    if (type === "totals" && elements.some((el) => el.type === "totals")) {
+      setToast("Only one totals element is allowed.");
+      return false;
+    }
+    return true;
+  };
+
+  // Click / tap a palette item: the element goes below what's on the page
+  // (auto-height pages grow to fit it)
+  const addBelow = (type: CanvasElement["type"]) => {
+    if (!allowed(type)) return;
+    const defaults = DEFAULT_ELEMENTS[type];
+    const room = page.heightMode === "auto" ? { ...page, height: MAX_DESIGN_HEIGHT } : page;
+    const { x, y } = freeSpotBelow(elements, defaults, room, GRID_SIZE);
+    addElement({ id: generateId(), type, x, y, zIndex: elements.length + 1, ...defaults } as CanvasElement);
+    setSheet(null);
+  };
+
   const handleDragEnd = (e: DragEndEvent) => {
     setDraggingType(null);
     const pointer = pointerRef.current;
@@ -133,16 +169,7 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
     if (!over || over.id !== "canvas") return;
 
     const type = active.data.current?.type as CanvasElement["type"];
-    if (!type) return;
-
-    if (type === "items_table" && elements.some((el) => el.type === "items_table")) {
-      setToast("Only one items table is allowed.");
-      return;
-    }
-    if (type === "totals" && elements.some((el) => el.type === "totals")) {
-      setToast("Only one totals element is allowed.");
-      return;
-    }
+    if (!type || !allowed(type)) return;
 
     // Drop point = where the pointer was released
     if (!pointer || !over.rect) return;
@@ -220,19 +247,20 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
       }}
     >
       <div className="flex h-screen w-full flex-col overflow-hidden">
-        <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4 justify-between shrink-0">
-          <div className="flex items-center gap-3">
+        <header className="h-14 border-b border-gray-200 bg-white flex items-center gap-2 px-2 sm:px-4 justify-between shrink-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Link
               to="/templates"
-              className="flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
+              aria-label="Templates"
+              className="flex shrink-0 items-center gap-1 text-sm text-gray-600 hover:text-gray-900"
               onClick={(e) => {
                 if (dirty && !window.confirm("Leave without saving? Your changes will be lost.")) e.preventDefault();
               }}
             >
               <ChevronLeft className="size-4" />
-              Templates
+              <span className="hidden sm:inline">Templates</span>
             </Link>
-            <div className="w-px h-6 bg-gray-300" />
+            <div className="hidden w-px h-6 bg-gray-300 sm:block" />
             <h1 className="sr-only">Receipt Studio editor</h1>
             <DocumentBar
               templateId={templateId}
@@ -241,9 +269,10 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
               dirty={dirty}
               saving={persistence.saving}
               onSave={(asNew) => void save(asNew)}
+              compact={isMobile}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-2 md:flex">
             <span className="text-sm font-medium text-gray-700">{Math.round(zoom * 100)}%</span>
             <button
               onClick={() => setZoom(1)}
@@ -282,10 +311,49 @@ const EditorWorkspace: React.FC<WorkspaceProps> = ({ templateId, workspaceKey, i
         )}
 
         <div className="flex flex-1 overflow-hidden">
-          <Palette />
+          {!isMobile && <Palette onAdd={addBelow} />}
           <Canvas />
-          <Inspector />
+          {!isMobile && <Inspector />}
         </div>
+
+        {/* Phones: the canvas takes the screen; elements and settings slide up */}
+        {isMobile && (
+          <nav aria-label="Editor tools" className="grid shrink-0 grid-cols-4 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
+            {[
+              { label: "Add", icon: <Plus />, onClick: () => setSheet(sheet === "add" ? null : "add"), active: sheet === "add" },
+              {
+                label: selectedType ? "Edit" : "Page",
+                icon: <SlidersHorizontal />, onClick: () => setSheet(sheet === "edit" ? null : "edit"), active: sheet === "edit",
+              },
+              { label: "Undo", icon: <Undo2 />, onClick: undo, active: false },
+              { label: "Redo", icon: <Redo2 />, onClick: redo, active: false },
+            ].map((tool) => (
+              <button
+                key={tool.label}
+                type="button"
+                onClick={tool.onClick}
+                aria-pressed={tool.active}
+                aria-label={tool.label === "Edit" && selectedType ? `Edit ${ELEMENT_LABELS[selectedType]}` : undefined}
+                className="flex flex-col items-center gap-0.5 py-2 text-xs font-medium text-gray-700 aria-pressed:text-indigo-700 [&_svg]:size-5"
+              >
+                {tool.icon}
+                <span className="max-w-full truncate px-1">{tool.label}</span>
+              </button>
+            ))}
+          </nav>
+        )}
+        {isMobile && sheet === "add" && (
+          <BottomSheet name="add" title="Add to the receipt" onClose={() => setSheet(null)}>
+            <PaletteGrid onAdd={addBelow} />
+          </BottomSheet>
+        )}
+        {isMobile && sheet === "edit" && (
+          <BottomSheet name="edit" title={selectedType ? ELEMENT_LABELS[selectedType] : "Page"} onClose={() => setSheet(null)}>
+            <div data-inspector="">
+              <InspectorContent />
+            </div>
+          </BottomSheet>
+        )}
 
         {toast && (
           <div role="alert" className="fixed bottom-12 left-1/2 transform -translate-x-1/2 bg-red-600 text-white font-semibold px-6 py-4 rounded-lg shadow-2xl z-[100] flex items-center justify-between gap-4 max-w-[min(36rem,calc(100vw-2rem))] pointer-events-auto border-2 border-red-800">

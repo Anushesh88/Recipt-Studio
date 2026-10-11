@@ -13,6 +13,10 @@ import {
   WORKSPACE_PAGE_ORIGIN,
 } from "../../lib/units";
 import { zoomAtPoint } from "../../lib/zoomUtils";
+import { useIsMobile } from "../../lib/useIsMobile";
+
+// Space around the page when it's fitted to the screen width
+const FIT_GUTTER_PX = 16;
 
 export const Canvas: React.FC = () => {
   const page = useEditorStore((state) => state.page);
@@ -49,8 +53,25 @@ export const Canvas: React.FC = () => {
     }
   }, [setZoom, page.width, page.height]);
 
-  // Center on mount
+  // Phones: the page as wide as the screen, its top-left corner in view
+  const fitToWidth = useCallback(() => {
+    const container = containerRef.current;
+    const content = contentWrapperRef.current;
+    if (!container || !content) return;
+    const fitted = (container.clientWidth - 2 * FIT_GUTTER_PX) / page.width;
+    setZoom(Math.max(ZOOM_MIN, Math.min(1, fitted)));
+    container.scrollLeft = content.offsetLeft - FIT_GUTTER_PX;
+    container.scrollTop = content.offsetTop - FIT_GUTTER_PX;
+  }, [setZoom, page.width]);
+  const isMobile = useIsMobile();
+
+  // Center on mount (phones: fit to the width)
   useEffect(() => {
+    if (isMobile) {
+      // after layout settles (the screen's width is final)
+      const frame = requestAnimationFrame(fitToWidth);
+      return () => cancelAnimationFrame(frame);
+    }
     if (containerRef.current && contentWrapperRef.current) {
       const container = containerRef.current;
       const content = contentWrapperRef.current;
@@ -59,6 +80,8 @@ export const Canvas: React.FC = () => {
       container.scrollLeft = scrollX;
       container.scrollTop = scrollY;
     }
+    // Only on mount and page size changes, not when the window crosses the breakpoint
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.width, page.height]);
 
   // Non-passive wheel listener: zooms centered at cursor position
@@ -169,6 +192,15 @@ export const Canvas: React.FC = () => {
       {/* Zoom readout and 100% reset, floating over the top-right of the canvas area */}
       <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur shadow border border-gray-200 rounded px-2.5 py-1.5 flex items-center gap-2 pointer-events-auto">
         <span className="text-xs font-semibold text-gray-700">{Math.round(zoom * 100)}%</span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            fitToWidth();
+          }}
+          className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-2 py-0.5 rounded border border-gray-300 transition-colors"
+        >
+          Fit
+        </button>
         <button
           onClick={(e) => {
             e.stopPropagation();

@@ -29,10 +29,14 @@ function downloadCsv(report: SalesReport) {
   setTimeout(() => URL.revokeObjectURL(url), OBJECT_URL_REVOKE_DELAY_MS);
 }
 
+// Phones drop the Unit (shown with the quantity) and On receipts columns
+const WIDE = "hidden sm:table-cell";
+
 const TotalRow: React.FC<{ label: string; value: string; currency: string; strong?: boolean }> = ({ label, value, currency, strong }) => (
   <tr className={strong ? "border-t border-gray-300 text-base font-bold" : ""} data-total={label}>
-    <td colSpan={4} className="px-4 py-1.5 text-right">{label}</td>
-    <td className="px-4 py-1.5 text-right tabular-nums">{money(value, currency)}</td>
+    <td colSpan={2} className="px-3 py-1.5 text-right sm:px-4">{label}</td>
+    <td colSpan={2} className={WIDE} />
+    <td className="px-3 py-1.5 text-right tabular-nums whitespace-nowrap sm:px-4">{money(value, currency)}</td>
   </tr>
 );
 
@@ -47,21 +51,24 @@ const ReportTable: React.FC<{ report: SalesReport }> = ({ report }) => {
       <table className="w-full text-sm" data-sales-report="">
         <thead className="bg-gray-50 text-left text-xs uppercase text-gray-600">
           <tr>
-            <th className="px-4 py-2">Item</th>
-            <th className="px-4 py-2">Unit</th>
-            <th className="px-4 py-2 text-right">Qty sold</th>
-            <th className="px-4 py-2 text-right">On receipts</th>
-            <th className="px-4 py-2 text-right">Amount</th>
+            <th className="px-3 py-2 sm:px-4">Item</th>
+            <th className="px-3 py-2 text-right sm:px-4">Qty sold</th>
+            <th className={`px-4 py-2 ${WIDE}`}>Unit</th>
+            <th className={`px-4 py-2 text-right ${WIDE}`}>On receipts</th>
+            <th className="px-3 py-2 text-right sm:px-4">Amount</th>
           </tr>
         </thead>
         <tbody>
           {report.items.map((item) => (
             <tr key={`${item.description}|${item.unit}`} className="border-t border-gray-100" data-report-item={item.description}>
-              <td className="px-4 py-2">{item.description}</td>
-              <td className="px-4 py-2 text-gray-600">{item.unit ?? ""}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{formatQuantity(item.quantity)}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{item.receipts}</td>
-              <td className="px-4 py-2 text-right tabular-nums">{money(item.amount, currency)}</td>
+              <td className="px-3 py-2 sm:px-4">{item.description}</td>
+              <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap sm:px-4">
+                {formatQuantity(item.quantity)}
+                {item.unit && <span className="text-gray-600 sm:hidden"> {item.unit}</span>}
+              </td>
+              <td className={`px-4 py-2 text-gray-600 ${WIDE}`}>{item.unit ?? ""}</td>
+              <td className={`px-4 py-2 text-right tabular-nums ${WIDE}`}>{item.receipts}</td>
+              <td className="px-3 py-2 text-right tabular-nums whitespace-nowrap sm:px-4">{money(item.amount, currency)}</td>
             </tr>
           ))}
         </tbody>
@@ -115,7 +122,7 @@ export const Reports: React.FC = () => {
             <ChevronLeft className="size-4" />
             Templates
           </Link>
-          <h1 className="text-3xl font-bold">Sales report</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">Sales report</h1>
         </div>
         {report && report.receipt_count > 0 && (
           <div className="flex gap-2 print:hidden">
@@ -174,15 +181,15 @@ export const Reports: React.FC = () => {
             </p>
           ) : (
             <>
-              <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="mb-4 grid grid-cols-3 gap-2 sm:gap-3">
                 {[
                   ["Total sales", report.totals.total],
                   ["Total tax", report.totals.tax],
                   ["Receipts", String(report.receipt_count)],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-lg border border-border bg-white p-4">
+                  <div key={label} className="min-w-0 rounded-lg border border-border bg-white p-3 sm:p-4">
                     <p className="text-xs text-muted-foreground">{label}</p>
-                    <p className="text-2xl font-bold tabular-nums">{label === "Receipts" ? value : money(value, report.currency ?? "INR")}</p>
+                    <p className="truncate text-base font-bold tabular-nums sm:text-2xl">{label === "Receipts" ? value : money(value, report.currency ?? "INR")}</p>
                   </div>
                 ))}
               </div>

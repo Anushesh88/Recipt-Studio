@@ -48,7 +48,13 @@ export const WhatsAppButton: React.FC<{ receipt: ReceiptSummary; size?: "xs" | "
           WhatsApp
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" collisionPadding={8} className="w-80 space-y-3" data-whatsapp="">
+      <PopoverContent
+        align="end"
+        collisionPadding={8}
+        // Scrolls rather than running off a phone screen
+        className="max-h-(--radix-popover-content-available-height) w-[min(20rem,calc(100vw-1rem))] space-y-3 overflow-y-auto"
+        data-whatsapp=""
+      >
         <div className="space-y-1.5">
           <Label htmlFor={phoneId}>Customer's WhatsApp number</Label>
           <Input id={phoneId} type="tel" inputMode="tel" autoComplete="off" placeholder="e.g. 98765 43210" value={phone}
@@ -62,7 +68,7 @@ export const WhatsAppButton: React.FC<{ receipt: ReceiptSummary; size?: "xs" | "
           {message === null && !error ? (
             <p className="text-sm text-muted-foreground">Making a link to the receipt…</p>
           ) : (
-            <Textarea id={messageId} rows={5} value={message ?? ""} onChange={(e) => setMessage(e.target.value)} disabled={message === null} />
+            <Textarea id={messageId} rows={4} value={message ?? ""} onChange={(e) => setMessage(e.target.value)} disabled={message === null} />
           )}
           {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
           <p className="text-xs text-muted-foreground">Anyone with the link can open this receipt's PDF.</p>

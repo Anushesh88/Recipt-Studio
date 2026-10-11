@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useFieldArray, useForm, useWatch, type FieldErrors, type Path } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ import { hasGstProfile, useAccount } from "../../api/account";
 import { variableLabel, CUSTOM_PREFIX } from "../../lib/variables";
 import { COMMON_GST_RATES, COMMON_UNITS, STATE_OPTIONS, UNIT_MAX_LENGTH, gstinState, stateLabel } from "../../lib/gst";
 import { ReceiptPreview } from "../preview/ReceiptPreview";
+import { currencyPrefix } from "../../lib/whatsapp";
 import { ExportButtons } from "../receipts/ExportButtons";
 import { useElementWidth } from "./useElementWidth";
 import {
@@ -334,7 +335,7 @@ export const GenerateForm: React.FC<{
             </Section>
           </div>
         ) : (
-          <form className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate data-generate-form="">
+          <form id="generate-form" className="space-y-4" onSubmit={handleSubmit(onSubmit)} noValidate data-generate-form="">
             {gst && (
               <Section title="From">
                 {hasGstProfile(profile) ? (
@@ -441,15 +442,17 @@ export const GenerateForm: React.FC<{
                       {/* full width on phones, first column from sm up */}
                       <div className="col-span-4 sm:col-span-1">{description(index)}</div>
                       <div>
+                        <span className="mb-1 block text-[11px] text-muted-foreground sm:hidden" aria-hidden="true">Qty</span>
                         <Input aria-label={`Item ${index + 1} quantity`} inputMode="decimal" {...register(`items.${index}.qty`)} />
                         <FieldError message={err(`items.${index}.qty`)} />
                       </div>
                       <div>
+                        <span className="mb-1 block text-[11px] text-muted-foreground sm:hidden" aria-hidden="true">Price</span>
                         <Input aria-label={`Item ${index + 1} unit price`} inputMode="decimal" placeholder="0.00" {...register(`items.${index}.unit_price`)} />
                         <FieldError message={err(`items.${index}.unit_price`)} />
                       </div>
-                      <p className="pt-2 text-right text-sm tabular-nums" aria-label={`Item ${index + 1} total`}>{preview.rows[index]?.line_total ?? "—"}</p>
-                      <Button type="button" variant="ghost" size="icon-sm" aria-label={`Remove item ${index + 1}`} onClick={() => items.remove(index)}>
+                      <p className="pt-6 text-right text-sm tabular-nums sm:pt-2" aria-label={`Item ${index + 1} total`}>{preview.rows[index]?.line_total ?? "—"}</p>
+                      <Button type="button" variant="ghost" size="icon-sm" className="mt-5 sm:mt-0" aria-label={`Remove item ${index + 1}`} onClick={() => items.remove(index)}>
                         <Trash2 />
                       </Button>
                     </div>
@@ -504,16 +507,36 @@ export const GenerateForm: React.FC<{
             )}
 
             {formError && <p role="alert" className="text-sm text-destructive">{formError}</p>}
-            <Button type="submit" className="w-full" disabled={formState.isSubmitting || gstBlocked}>
+            <Button type="submit" className="hidden w-full lg:flex" disabled={formState.isSubmitting || gstBlocked}>
               {formState.isSubmitting ? "Creating…" : gst ? "Create invoice" : "Create receipt"}
             </Button>
           </form>
         )}
       </div>
 
-      <div ref={previewRef} className="flex flex-1 justify-center bg-gray-100 p-4 lg:overflow-auto lg:p-8">
+      <div ref={previewRef} id="receipt-preview" className="flex flex-1 scroll-mt-2 flex-col items-center bg-gray-100 p-4 lg:overflow-auto lg:p-8">
+        <p className="mb-2 self-start text-xs font-semibold tracking-wide text-muted-foreground uppercase lg:hidden">Preview</p>
         <ReceiptPreview canvas={canvas} scale={scale} values={preview.values} rows={preview.rows} totals={preview.totals} taxRows={preview.taxRows} />
       </div>
+
+      {/* Phones: the total and the actions stay in reach while scrolling */}
+      {!created && (
+        <div className="sticky bottom-0 z-30 flex items-center gap-2 border-t border-border bg-white px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden" data-generate-bar="">
+          <div className="mr-auto min-w-0">
+            <p className="text-[11px] text-muted-foreground">Total</p>
+            <p className="truncate font-semibold tabular-nums" data-bar-total="">
+              {currencyPrefix(gst ? GST_CURRENCY : watched.receipt?.currency || GST_CURRENCY)}{preview.totals.total}
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById("receipt-preview")?.scrollIntoView({ behavior: "smooth" })}>
+            <Eye />
+            Preview
+          </Button>
+          <Button type="submit" form="generate-form" size="sm" disabled={formState.isSubmitting || gstBlocked}>
+            {formState.isSubmitting ? "Creating…" : gst ? "Create invoice" : "Create receipt"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

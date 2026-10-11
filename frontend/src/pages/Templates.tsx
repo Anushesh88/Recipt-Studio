@@ -40,7 +40,7 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
     }, "Couldn't duplicate the template.");
 
   return (
-    <article data-template-card={template.name} className="flex h-64 flex-col rounded-lg border border-border bg-white p-4 shadow-sm">
+    <article data-template-card={template.name} className="flex min-h-44 flex-col sm:h-64 rounded-lg border border-border bg-white p-4 shadow-sm">
       <Link to={`/editor/${template.id}`} className="flex-1 space-y-1">
         <h2 className="line-clamp-2 text-lg font-semibold hover:underline">{template.name}</h2>
         {template.document_type === 'gst_invoice' && (
@@ -96,7 +96,7 @@ export default function Templates() {
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="space-y-2">
           <Link to="/templates" aria-label="Receipt Studio home"><Logo /></Link>
-          <h1 className="text-3xl font-bold">My Templates</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">My Templates</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
@@ -125,7 +125,7 @@ export default function Templates() {
           <button
             type="button"
             onClick={() => navigate('/editor', { state: { documentType: mode === 'gst' ? 'gst_invoice' : 'receipt' } })}
-            className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="flex h-28 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed sm:h-64 border-gray-300 text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             <FilePlus2 className="size-6" />
             <span className="font-medium">{mode === 'gst' ? 'New blank GST invoice' : 'New blank receipt'}</span>

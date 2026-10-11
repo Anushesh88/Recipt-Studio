@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { clampToPage, computeDropCoords, getEventClientCoords } from "./canvasUtils";
+import { clampToPage, computeDropCoords, freeSpotBelow, getEventClientCoords } from "./canvasUtils";
 
 describe("computeDropCoords", () => {
   it("computes correctly at zoom 1.0", () => {
@@ -68,5 +68,16 @@ describe("getEventClientCoords", () => {
 
   it("returns null for events without coordinates", () => {
     expect(getEventClientCoords({} as Event)).toBeNull();
+  });
+});
+
+describe("freeSpotBelow", () => {
+  const page = { width: 302, height: 400, margin: 12 };
+  it("centres the element below the lowest one, on the grid", () => {
+    expect(freeSpotBelow([{ y: 12, height: 20 }, { y: 40, height: 30 }], { width: 100, height: 30 }, page, 4)).toEqual({ x: 100, y: 80 });
+  });
+  it("starts at the top margin on an empty page, and stays on the page", () => {
+    expect(freeSpotBelow([], { width: 100, height: 30 }, page, 4)).toEqual({ x: 100, y: 20 });
+    expect(freeSpotBelow([{ y: 380, height: 20 }], { width: 100, height: 30 }, page, 4).y).toBeLessThanOrEqual(370);
   });
 });

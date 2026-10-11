@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { sendFeedback } from "../api/feedback";
 import { apiErrorMessage } from "../api/client";
+import { useIsMobile } from "../lib/useIsMobile";
 
 const MAX_LENGTH = 2000;
 
@@ -19,7 +20,9 @@ export const FeedbackButton: React.FC = () => {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
   const fieldId = useId();
-  if (pathname.startsWith("/editor")) return null;
+  const isMobile = useIsMobile();
+  // The editor has its own toolbar; on phones Generate has a bottom bar
+  if (pathname.startsWith("/editor") || (isMobile && pathname.startsWith("/generate"))) return null;
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,14 +39,18 @@ export const FeedbackButton: React.FC = () => {
   };
 
   return (
+    <>
+    {/* Room at the end of the page, so the button never covers the last thing on it */}
+    {!pathname.startsWith("/generate") && <div aria-hidden="true" className="h-20" />}
     <Popover open={open} onOpenChange={(next) => { setOpen(next); if (next) setState("idle"); }}>
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="fixed right-4 bottom-4 z-40 flex items-center gap-1.5 rounded-full bg-indigo-700 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-indigo-800 print:hidden"
+          aria-label="Feedback"
+          className="fixed right-4 bottom-4 z-40 flex items-center gap-1.5 rounded-full bg-indigo-700 p-3 text-sm font-medium text-white shadow-lg hover:bg-indigo-800 sm:px-4 sm:py-2 print:hidden"
         >
-          <MessageSquareText className="size-4" />
-          Feedback
+          <MessageSquareText className="size-5 sm:size-4" />
+          <span className="hidden sm:inline">Feedback</span>
         </button>
       </PopoverTrigger>
       <PopoverContent side="top" align="end" collisionPadding={8} className="w-80" data-feedback="">
@@ -66,5 +73,6 @@ export const FeedbackButton: React.FC = () => {
         )}
       </PopoverContent>
     </Popover>
+    </>
   );
 };
