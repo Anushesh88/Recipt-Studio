@@ -117,25 +117,28 @@ export default function Templates() {
 
       {actionError && <p role="alert" className="mb-4 text-sm text-destructive">{actionError}</p>}
 
+      {/* Yours first (blank + saved), then the ready-made ones */}
+      <section className="mb-10" aria-labelledby="mine-heading">
+        <h2 id="mine-heading" className="mb-3 text-sm font-semibold text-muted-foreground">Your templates</h2>
+        {isError && <p role="alert" className="mb-4 text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your templates.")}</p>}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => navigate('/editor', { state: { documentType: mode === 'gst' ? 'gst_invoice' : 'receipt' } })}
+            className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50"
+          >
+            <FilePlus2 className="size-6" />
+            <span className="font-medium">{mode === 'gst' ? 'New blank GST invoice' : 'New blank receipt'}</span>
+          </button>
+          {templates?.map((t) => <TemplateCard key={t.id} template={t} onError={setActionError} />)}
+        </div>
+        {isLoading && <p className="mt-6 text-sm text-muted-foreground">Loading templates…</p>}
+        {templates && templates.length === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">No saved templates yet. Start with a blank one, or pick a ready-made template below.</p>
+        )}
+      </section>
+
       <StarterGallery mode={mode} onError={setActionError} />
-      {isError && <p role="alert" className="mb-4 text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your templates.")}</p>}
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => navigate('/editor', { state: { documentType: mode === 'gst' ? 'gst_invoice' : 'receipt' } })}
-          className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 text-gray-500 transition-colors hover:border-gray-400 hover:bg-gray-50"
-        >
-          <FilePlus2 className="size-6" />
-          <span className="font-medium">{mode === 'gst' ? 'New blank GST invoice' : 'New blank receipt'}</span>
-        </button>
-        {templates?.map((t) => <TemplateCard key={t.id} template={t} onError={setActionError} />)}
-      </div>
-
-      {isLoading && <p className="mt-6 text-sm text-muted-foreground">Loading templates…</p>}
-      {templates && templates.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">No saved templates yet. Start with a blank receipt.</p>
-      )}
     </div>
   );
 }
