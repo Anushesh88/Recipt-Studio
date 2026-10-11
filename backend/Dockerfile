@@ -15,9 +15,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install uv for fast resolution/installation
 RUN pip install uv
 
-# pyproject.toml names README.md as the package readme, so both are needed to install
+# pyproject.toml names README.md as the package readme, so both are needed to
+# install. Just the runtime dependencies: the test tools stay out of the image
+# (tests run from a local virtualenv, see README.md)
 COPY pyproject.toml README.md ./
-RUN uv pip install --system -e .[dev]
+RUN uv pip install --system -r pyproject.toml
 
 COPY . .
 
@@ -26,4 +28,6 @@ COPY . .
 ENV APP_ENV=production
 
 # Bring the database schema up to date, then serve
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# on the port the host assigns ($PORT on Render / Koyeb), trusting its proxy for
+# the visitor's address and https
+CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

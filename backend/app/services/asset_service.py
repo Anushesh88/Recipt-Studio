@@ -1,11 +1,10 @@
 """Logo / signature uploads (Architecture rule 6).
 
 The content type is decided from the file's magic bytes, never from the
-client-supplied Content-Type or filename; files are stored under a fresh uuid
-name, scoped per user.
+client-supplied Content-Type or filename. Images are stored in the database
+(assets.content), scoped per user; older uploads may still be files on disk.
 """
 import uuid
-from pathlib import Path
 
 from fastapi import UploadFile
 from sqlalchemy import select
@@ -47,24 +46,16 @@ async def save_asset(db: AsyncSession, user: User, kind: AssetKind, upload: Uplo
     if mime_type is None:
         raise UnsupportedAssetTypeError
 
-    relative_path = Path(str(user.id)) / f"{uuid.uuid4().hex}{EXTENSIONS[mime_type]}"
-    absolute_path = settings.ASSET_STORAGE_DIR / relative_path
-    absolute_path.parent.mkdir(parents=True, exist_ok=True)
-    absolute_path.write_bytes(data)
-
     asset = Asset(
         user_id=user.id,
         kind=kind,
-        storage_path=relative_path.as_posix(),
+        content=data,
+        storage_path=f"db/{user.id}/{uuid.uuid4().hex}{EXTENSIONS[mime_type]}",
         mime_type=mime_type,
         size_bytes=len(data),
     )
     db.add(asset)
-    try:
-        await db.commit()
-    except Exception:
-        absolute_path.unlink(missing_ok=True)
-        raise
+    await db.commit()
     await db.refresh(asset)
     return asset
 
@@ -76,10 +67,13 @@ async def get_user_asset(db: AsyncSession, user: User, asset_id: uuid.UUID) -> A
     return result.scalars().first()
 
 
-def asset_file_path(asset: Asset) -> Path | None:
-    """Absolute path of the stored file, or None if missing / outside storage."""
+async def asset_bytes(db: AsyncSession, asset: Asset) -> bytes | None:
+    """The image: from the database, or (older uploads) the file on disk."""
+    await db.refresh(asset, ["content"])
+    if asset.content is not None:
+        return asset.content
     root = settings.ASSET_STORAGE_DIR.resolve()
     path = (root / asset.storage_path).resolve()
     if not path.is_relative_to(root) or not path.is_file():
         return None
-    return path
+    return path.read_bytes()

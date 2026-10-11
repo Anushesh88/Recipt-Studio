@@ -1,8 +1,16 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from fastapi.responses import FileResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.auth import get_current_user
@@ -38,19 +46,19 @@ async def upload_asset(
         ) from None
 
 
-# Binary response: the file itself, so there is no Pydantic response model
-@router.get("/{asset_id}", response_class=FileResponse)
+# Binary response: the image itself, so there is no Pydantic response model
+@router.get("/{asset_id}", response_class=Response)
 async def get_asset_file(
     asset_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-) -> FileResponse:
+) -> Response:
     asset = await asset_service.get_user_asset(db, current_user, asset_id)
-    path = asset_service.asset_file_path(asset) if asset else None
-    if asset is None or path is None:
+    content = await asset_service.asset_bytes(db, asset) if asset else None
+    if asset is None or content is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Asset not found")
-    return FileResponse(
-        path,
+    return Response(
+        content,
         media_type=asset.mime_type,
         headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, max-age=3600"},
     )

@@ -1,7 +1,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, func
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Integer,
+    LargeBinary,
+    Text,
+    func,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -16,7 +24,10 @@ class Asset(Base):
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
     kind: Mapped[str] = mapped_column(Text, nullable=False)
-    # Relative to settings.ASSET_STORAGE_DIR; the file name is a fresh uuid
+    # The image itself (at most MAX_ASSET_BYTES), so it survives on hosts whose
+    # disk is wiped on restart. Uploads from before it was kept here have
+    # content None and a file at storage_path (relative to ASSET_STORAGE_DIR)
+    content: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True, deferred=True)
     storage_path: Mapped[str] = mapped_column(Text, nullable=False)
     mime_type: Mapped[str] = mapped_column(Text, nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)

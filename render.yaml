@@ -1,0 +1,24 @@
+# Render Blueprint: the backend as a free Docker web service in Singapore.
+# Render > New > Blueprint > pick this repository. It asks for the values
+# marked sync: false (see DEPLOY.md).
+services:
+  - type: web
+    name: receipt-studio-api
+    runtime: docker
+    plan: free
+    region: singapore
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true  # a random key; keep it, or every login and receipt link breaks
+      - key: DATABASE_URL
+        sync: false  # Neon connection string
+      - key: CORS_ORIGINS
+        sync: false  # your frontend's address, e.g. https://receipt-studio.pages.dev
+      - key: GOOGLE_CLIENT_ID
+        sync: false  # optional: Sign in with Google

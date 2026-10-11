@@ -9,6 +9,7 @@ import { History } from './pages/History';
 import { Settings } from './pages/Settings';
 import { Welcome } from './pages/Welcome';
 import { Reports } from './pages/Reports';
+import { WakingUpNotice } from './components/WakingUpNotice';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -16,6 +17,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <WakingUpNotice />
       <Routes>
         <Route path="/login" element={token ? <Navigate to="/templates" /> : <Login />} />
         <Route path="/templates" element={requireAuth(<Templates />)} />

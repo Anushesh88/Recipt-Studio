@@ -16,13 +16,14 @@ from app.api.public import router as public_router
 from app.api.receipts import router as receipts_router
 from app.api.reports import router as reports_router
 from app.api.templates import router as templates_router
+from app.core.config import settings
 
 app = FastAPI(title="Receipt Studio API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    # Sign-in uses a bearer token, not cookies, so no credentials are needed
+    allow_origins=[origin.strip().rstrip("/") for origin in settings.CORS_ORIGINS.split(",") if origin.strip()],
     allow_methods=["*"],
     allow_headers=["*"],
     # Lets the frontend read the file name of exports

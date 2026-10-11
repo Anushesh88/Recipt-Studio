@@ -1,9 +1,12 @@
+import uuid
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import Any
 
 from httpx import AsyncClient
 
 from app.core.config import settings
+from app.models.asset import Asset
 
 Login = Callable[[str], Awaitable[dict[str, str]]]
 
@@ -26,10 +29,9 @@ async def test_upload_png_and_fetch_it_back(
     assert body["mime_type"] == "image/png"
     assert body["size_bytes"] == len(PNG_BYTES)
 
-    # Stored under a uuid name inside the user's folder; the original name is ignored
-    stored = list(asset_dir.rglob("*.png"))
-    assert len(stored) == 1
-    assert "evil" not in stored[0].name
+    # Kept in the database (free hosts wipe their disk), never as a file
+    # named after the upload
+    assert list(asset_dir.rglob("*")) == []
 
     fetched = await client.get(f"/assets/{body['id']}", headers=headers)
     assert fetched.status_code == 200
@@ -102,3 +104,21 @@ async def test_assets_are_private_to_their_owner(
     asset_id = response.json()["id"]
     assert (await client.get(f"/assets/{asset_id}", headers=other)).status_code == 404
     assert (await client.get(f"/assets/{asset_id}", headers=owner)).status_code == 200
+
+
+async def test_uploads_from_before_the_database_are_read_from_disk(
+    client: AsyncClient, login: Login, asset_dir: Path, session_factory: Any
+) -> None:
+    headers = await login("old@example.com")
+    uploaded = (await client.post("/assets", headers=headers, data={"kind": "logo"},
+                                  files={"file": ("logo.png", PNG_BYTES, "image/png")})).json()
+    # As stored by an earlier version: on disk, no content in the row
+    (asset_dir / "legacy").mkdir()
+    (asset_dir / "legacy" / "logo.png").write_bytes(PNG_BYTES)
+    async with session_factory() as session:
+        asset = await session.get(Asset, uuid.UUID(uploaded["id"]))
+        asset.content = None
+        asset.storage_path = "legacy/logo.png"
+        await session.commit()
+    fetched = await client.get(f"/assets/{uploaded['id']}", headers=headers)
+    assert (fetched.status_code, fetched.content) == (200, PNG_BYTES)

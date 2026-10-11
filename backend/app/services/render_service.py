@@ -290,9 +290,9 @@ async def asset_sources(db: AsyncSession, user: User, canvas: Mapping[str, Any])
             asset = await asset_service.get_user_asset(db, user, uuid.UUID(asset_id))
         except ValueError:
             continue
-        path = asset_service.asset_file_path(asset) if asset else None
-        if asset and path:
-            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+        content = await asset_service.asset_bytes(db, asset) if asset else None
+        if asset and content is not None:
+            encoded = base64.b64encode(content).decode("ascii")
             sources[asset_id] = f"data:{asset.mime_type};base64,{encoded}"
     return sources
 

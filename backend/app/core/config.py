@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     # OAuth client ID (Google Cloud console, "Web application") for "Sign in
     # with Google"; the button is hidden while this is unset
     GOOGLE_CLIENT_ID: str | None = None
+    # Websites allowed to call the API from the browser, comma-separated, e.g.
+    # "https://receipt-studio.vercel.app"; "*" (the default) allows any
+    CORS_ORIGINS: str = "*"
 
     # Uploaded logos/signatures (PNG/JPG only, docs/01-prd.md)
     ASSET_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "assets"
