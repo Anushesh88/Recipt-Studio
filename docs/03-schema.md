@@ -189,6 +189,10 @@ users
                      -- asked once after sign-up; NULL = not asked yet
   created_at         TIMESTAMPTZ DEFAULT now()
 
+feedback       -- the in-app Feedback button
+  id UUID PK, user_id UUID FK -> users.id ON DELETE SET NULL, email TEXT,
+  message TEXT, page TEXT NULL, created_at TIMESTAMPTZ
+
 assets
   id            UUID PK
   user_id       UUID FK -> users.id ON DELETE CASCADE
@@ -243,6 +247,11 @@ POST   /auth/google     ({credential}: a Google ID token -> login token; makes
                          the account, or links the one with that verified email
                          and retires its password. 401 GOOGLE_TOKEN_INVALID,
                          503 GOOGLE_SIGN_IN_DISABLED)
+POST   /auth/forgot-password ({email}: emails a one-hour, single-use reset link
+                           through Brevo; same answer whether or not the account
+                           exists; 3 per address / 20 per visitor an hour)
+POST   /auth/reset-password  ({token, password} -> login token; 400 RESET_LINK_INVALID)
+POST   /feedback           ({message, page}) GET /admin/feedback (ADMIN_EMAILS only)
 GET    /auth/me            PATCH /auth/me   (business name, receipt prefix,
                                              numbering mode: sequential | nanoid)
 GET    /templates          POST /templates

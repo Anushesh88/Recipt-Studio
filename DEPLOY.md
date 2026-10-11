@@ -117,19 +117,89 @@ Database changes (migrations) run by themselves when the backend starts.
 
 ---
 
+## After launch: alerts, backups, password reset, feedback
+
+Each of these is already in the code and switches on when you add its
+settings. Nothing breaks while one is off.
+
+### Keep the backend awake (automatic)
+`.github/workflows/keep-awake.yml` visits `/health` every 10 minutes, so
+visitors don't wait a minute for the server to wake. Nothing to set up. If
+your Render address ever changes, add a repository **variable** `BACKEND_URL`
+(GitHub > Settings > Secrets and variables > Actions > Variables). GitHub
+pauses scheduled jobs after 60 days without commits; the **Actions** tab shows
+a button to turn it back on.
+
+### Forgot password (Brevo, free: 300 emails a day)
+Render's free plan blocks normal email (SMTP), so emails go through Brevo's
+web API.
+1. Sign up at **https://www.brevo.com** (free plan).
+2. **Senders, domains & dedicated IPs > Senders > Add a sender**: your name and
+   the email you'll send from, e.g. your Gmail. Click the link Brevo emails you.
+3. **SMTP & API > API keys > Generate a new API key**, named `receipt-studio`.
+   Copy it (it starts with `xkeysib-`).
+4. On Render, open **Environment** and add:
+   - `BREVO_API_KEY` = the key
+   - `EMAIL_FROM` = the sender address from step 2
+   - `PUBLIC_APP_URL` = `https://receipt-studio-5tp.pages.dev` (your website; the email links go there)
+5. Save; Render redeploys. Try **Forgot password?** on the sign-in page.
+
+Emails sent "from" a Gmail address through Brevo can land in spam. With your
+own domain later, authenticate the domain in Brevo, which fixes that.
+
+### Error alerts (Sentry, free)
+1. Sign up at **https://sentry.io** and create **two projects**: platform
+   **FastAPI** (name `receipt-studio-api`) and platform **React** (name `receipt-studio-web`).
+2. Each project shows a **DSN** (Settings > Client Keys), a URL like
+   `https://abc123@o456.ingest.sentry.io/789`.
+3. On **Render**: add `SENTRY_DSN` = the FastAPI project's DSN.
+4. On **Cloudflare Pages**: Settings > Variables and secrets, add
+   `VITE_SENTRY_DSN` = the React project's DSN, then **redeploy** the site
+   (Deployments > latest > Retry). The website reads it when it's built.
+
+Sentry then emails you when something breaks. No customer details, request
+bodies, cookies or IP addresses are sent.
+
+### Read feedback
+Users' **Feedback** button saves messages in the database. To read them, add
+`ADMIN_EMAILS` = your account's email (comma-separate several) on Render.
+Then **Settings > Read feedback** in the app lists them, newest first.
+
+### Nightly database backup (encrypted)
+`.github/workflows/backup-database.yml` copies the database every night at
+03:00 India time and keeps each copy for 30 days. The repository is public, so
+the copy is **encrypted** first; without your passphrase it's unreadable.
+1. Make a passphrase (in `backend/`):
+   `.venv/Scripts/python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+   **Save it in a password manager**: without it, the backups can't be opened.
+2. GitHub > your repository > **Settings > Secrets and variables > Actions >
+   Secrets > New repository secret**:
+   - `BACKUP_DATABASE_URL` = your Neon connection string
+   - `BACKUP_PASSPHRASE` = the passphrase
+3. **Actions > Back up the database > Run workflow** to try it. It should turn
+   green with a file under **Artifacts**.
+
+**Restoring** (only if something goes wrong): download the artifact, then
+```bash
+gpg -d -o receipt-studio.dump receipt-studio.dump.gpg
+pg_restore --no-owner --clean --if-exists -d "<a database connection string>" receipt-studio.dump
+```
+Restore into a **new** Neon branch or database first and check it, rather than
+over the live one.
+
+---
+
 ## Good to know
 
-- **Sleeping backend.** After 15 minutes with no visitors, the first person waits
-  about a minute. If you'd rather it stayed awake while you have testers, a free
-  service like **cron-job.org** can open `https://<your-render-address>/health`
-  every 10 minutes. One always-on service uses about 744 of Render's 750 free
-  hours a month, so keep only this one service on the free plan.
+- **Sleeping backend.** The keep-awake job (above) visits it every 10 minutes.
+  If GitHub runs it late, the first visitor may still see "Waking up the
+  server…" for up to a minute. One always-on service uses about 744 of Render's
+  750 free hours a month, so keep only this one service on the free plan.
 - **Storage.** 0.5 GB on Neon is roughly 50,000 or more receipts (each keeps a
   copy of its template). Logos and signatures (at most 2 MB each) are stored in
   the database too. Neon's dashboard shows how much is used.
-- **Backups.** Neon's free plan can only roll back a few hours. For a full copy of
-  your data, run `pg_dump "<your Neon connection string>" > backup.sql` now and
-  then (it comes with PostgreSQL), or ask for a small backup script.
+- **Backups.** Set up the nightly encrypted backup (above). Neon's free plan
+  itself can only roll back a few hours.
 - **Your own domain** (e.g. `receiptstudio.in`, a few hundred rupees a year) can be
   added later in Cloudflare Pages under **Custom domains**. Then add it to
   `CORS_ORIGINS` (comma-separated) and to Google's authorized origins.

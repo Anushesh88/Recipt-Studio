@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuthStore } from '../store/authStore';
 import { apiClient, apiErrorMessage } from '../api/client';
-import { utf8ByteLength } from '../lib/text';
-import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from '../lib/units';
+import { PASSWORD_MIN_LENGTH } from '../lib/units';
+import { emailField, newPasswordField } from '../lib/authRules';
 import { Logo } from '../components/brand/Logo';
 import { GoogleSignInButton } from '../components/auth/GoogleSignInButton';
 
-const email = z.string().trim().min(1, 'Enter your email').pipe(z.email('Enter a valid email address'));
+const email = emailField;
 
 const signInSchema = z.object({
   email,
@@ -23,10 +23,7 @@ const signInSchema = z.object({
 // Same rules as the backend's UserCreate
 const registerSchema = z.object({
   email,
-  password: z
-    .string()
-    .min(PASSWORD_MIN_LENGTH, `Use at least ${PASSWORD_MIN_LENGTH} characters`)
-    .refine((p) => utf8ByteLength(p) <= PASSWORD_MAX_BYTES, `Use at most ${PASSWORD_MAX_BYTES} characters`),
+  password: newPasswordField,
 });
 
 type Credentials = z.infer<typeof signInSchema>;
@@ -65,7 +62,10 @@ function CredentialsForm({ isRegister }: { isRegister: boolean }) {
         {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="login-password">Password</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="login-password">Password</Label>
+          {!isRegister && <Link to="/forgot-password" className="text-xs text-indigo-700 hover:underline">Forgot password?</Link>}
+        </div>
         <Input
           id="login-password"
           type="password"

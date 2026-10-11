@@ -22,7 +22,7 @@ export function starterValues({ canvas, sample }: StarterTemplate): { model: For
   values.discount = sample.discount ?? values.discount;
   const account: Account = {
     id: "sample", email: "", receipt_prefix: "R-", numbering_mode: "sequential", invoice_prefix: "INV/", invoicing_mode: "both",
-    has_password: true, google_linked: false,
+    has_password: true, google_linked: false, is_admin: false,
     business_name: sample.business.name, business_address: sample.business.address, gstin: sample.business.gstin ?? null,
   };
   return { model, values, account };

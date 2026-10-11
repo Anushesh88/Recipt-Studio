@@ -26,6 +26,26 @@ class Settings(BaseSettings):
     # Websites allowed to call the API from the browser, comma-separated, e.g.
     # "https://receipt-studio.vercel.app"; "*" (the default) allows any
     CORS_ORIGINS: str = "*"
+    # The website's address, for links in emails (password reset)
+    PUBLIC_APP_URL: str = "http://localhost:5173"
+
+    # Email (password reset) through Brevo's HTTPS API: free hosts like Render
+    # block the SMTP ports. Unset: no emails; in development the reset link is
+    # written to the log instead
+    BREVO_API_KEY: str | None = None
+    EMAIL_FROM: str | None = None  # a sender address verified in Brevo
+    EMAIL_FROM_NAME: str = "Receipt Studio"
+    PASSWORD_RESET_MINUTES: int = 60
+
+    # Error reports to Sentry (sentry.io > project > Client Keys); unset: off
+    SENTRY_DSN: str | None = None
+
+    # Accounts that can read feedback (/admin/feedback), comma-separated emails
+    ADMIN_EMAILS: str = ""
+
+    @property
+    def admin_emails(self) -> set[str]:
+        return {e.strip().lower() for e in self.ADMIN_EMAILS.split(",") if e.strip()}
 
     # Uploaded logos/signatures (PNG/JPG only, docs/01-prd.md)
     ASSET_STORAGE_DIR: Path = BACKEND_DIR / "storage" / "assets"

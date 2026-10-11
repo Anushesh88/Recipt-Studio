@@ -1,0 +1,50 @@
+# Nightly encrypted copy of the database, kept 30 days as a workflow artifact.
+# This repository is public, so the copy is encrypted (AES-256) before upload:
+# without BACKUP_PASSPHRASE it's unreadable. Setup and restore: DEPLOY.md.
+name: Back up the database
+
+on:
+  schedule:
+    - cron: "30 21 * * *" # 03:00 India time
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check the secrets are set
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ ${#PASSPHRASE} -lt 20 ]; then
+            # Skips (doesn't fail) until set up, so there are no nightly failure emails
+            echo "::warning::Backups are off: add the BACKUP_DATABASE_URL and BACKUP_PASSPHRASE (20+ characters) repository secrets (see DEPLOY.md)."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Dump and encrypt
+        if: steps.check.outputs.ready == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          # A recent pg_dump reads older servers too
+          docker run --rm -e DATABASE_URL postgres:18 \
+            sh -c 'pg_dump --format=custom --no-owner --no-privileges "$DATABASE_URL"' > receipt-studio.dump
+          test -s receipt-studio.dump
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 0 \
+            --symmetric --cipher-algo AES256 -o receipt-studio.dump.gpg receipt-studio.dump <<< "$PASSPHRASE"
+          rm receipt-studio.dump
+          ls -l receipt-studio.dump.gpg
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          name: database-${{ github.run_id }}
+          path: receipt-studio.dump.gpg
+          retention-days: 30
+          if-no-files-found: error

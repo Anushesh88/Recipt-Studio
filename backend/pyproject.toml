@@ -22,6 +22,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "bcrypt<4.0.0",
     "google-auth[requests]>=2.30.0",  # verifies "Sign in with Google" ID tokens
+    "sentry-sdk[fastapi]>=2.0.0",  # error alerts, when SENTRY_DSN is set
 ]
 
 [project.optional-dependencies]

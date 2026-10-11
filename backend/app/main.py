@@ -11,12 +11,26 @@ from pydantic import BaseModel
 from app.api.assets import router as assets_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
+from app.api.feedback import router as feedback_router
 from app.api.preview import router as preview_router
 from app.api.public import router as public_router
 from app.api.receipts import router as receipts_router
 from app.api.reports import router as reports_router
 from app.api.templates import router as templates_router
 from app.core.config import settings
+
+if settings.SENTRY_DSN:
+    # Error reports only: no request bodies (they hold customers' details), no
+    # IP addresses or cookies, no performance tracing
+    import sentry_sdk
+
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.APP_ENV,
+        send_default_pii=False,
+        max_request_body_size="never",
+        traces_sample_rate=0,
+    )
 
 app = FastAPI(title="Receipt Studio API")
 
@@ -59,6 +73,7 @@ app.include_router(preview_router, prefix="/preview", tags=["preview"])
 # Saved customers and items: /customers, /items
 app.include_router(catalog_router, tags=["catalog"])
 app.include_router(reports_router, prefix="/reports", tags=["reports"])
+app.include_router(feedback_router, tags=["feedback"])
 app.include_router(public_router, prefix="/public", tags=["public"])
 
 class HealthResponse(BaseModel):

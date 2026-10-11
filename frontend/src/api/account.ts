@@ -19,6 +19,7 @@ export interface Account {
   // How the account signs in: a password, Google, or both
   has_password: boolean;
   google_linked: boolean;
+  is_admin: boolean; // can read feedback
 }
 
 export type AccountChanges = Partial<

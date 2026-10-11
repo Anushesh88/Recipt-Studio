@@ -8,7 +8,7 @@ import { fractionToPercent } from "../../lib/money";
 const gstA4 = STARTER_TEMPLATES.find((t) => t.id === "gst-a4")!.canvas;
 const account: Account = {
   id: "a", email: "a@example.com", business_name: "Sharma Traders", receipt_prefix: "R-", numbering_mode: "sequential",
-  business_address: "12 MG Road, Pune", gstin: "27AAPFU0939F1ZV", invoice_prefix: "INV/", invoicing_mode: "gst", has_password: true, google_linked: false,
+  business_address: "12 MG Road, Pune", gstin: "27AAPFU0939F1ZV", invoice_prefix: "INV/", invoicing_mode: "gst", has_password: true, google_linked: false, is_admin: false,
 };
 
 const invoice = (change: (v: GenerateValues) => void) => {

@@ -5,6 +5,9 @@ import App from './App.tsx'
 import './index.css'
 import './lib/fonts'
 import { queryClient } from './api/queryClient'
+import { startErrorReporting } from './lib/errorReporting'
+
+startErrorReporting()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -48,6 +48,17 @@ class GoogleCredential(BaseModel):
     credential: Annotated[str, StringConstraints(min_length=1, max_length=4096)]
 
 
+class ForgotPassword(BaseModel):
+    """POST /auth/forgot-password"""
+    email: Email
+
+
+class ResetPassword(BaseModel):
+    """POST /auth/reset-password: the token from the emailed link."""
+    token: Annotated[str, StringConstraints(min_length=1, max_length=2048)]
+    password: Password
+
+
 class AuthProviders(BaseModel):
     """GET /auth/providers: which sign-in options the login page offers."""
     google_client_id: str | None
@@ -70,6 +81,7 @@ class UserResponse(BaseModel):
     # How the account signs in
     has_password: bool
     google_linked: bool
+    is_admin: bool  # can read feedback (ADMIN_EMAILS)
 
     model_config = ConfigDict(from_attributes=True)
 

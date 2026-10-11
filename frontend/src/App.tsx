@@ -11,6 +11,9 @@ import { Welcome } from './pages/Welcome';
 import { Reports } from './pages/Reports';
 import { WakingUpNotice } from './components/WakingUpNotice';
 import { PrivacyPolicy, TermsOfService } from './pages/Legal';
+import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
+import { AdminFeedback } from './pages/AdminFeedback';
+import { FeedbackButton } from './components/FeedbackButton';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -24,6 +27,9 @@ function App() {
         {/* Public, signed in or not */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
         <Route path="/terms" element={<TermsOfService />} />
+        <Route path="/forgot-password" element={token ? <Navigate to="/templates" /> : <ForgotPassword />} />
+        {/* Works signed in too: the link may be opened in a browser with another session */}
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/templates" element={requireAuth(<Templates />)} />
         {/* /editor = new blank template, /editor/:id = saved template */}
         <Route path="/editor/:id?" element={requireAuth(<Editor />)} />
@@ -32,8 +38,10 @@ function App() {
         <Route path="/settings" element={requireAuth(<Settings />)} />
         <Route path="/welcome" element={requireAuth(<Welcome />)} />
         <Route path="/reports" element={requireAuth(<Reports />)} />
+        <Route path="/admin/feedback" element={requireAuth(<AdminFeedback />)} />
         <Route path="*" element={<Navigate to="/templates" />} />
       </Routes>
+      {token && <FeedbackButton />}
     </BrowserRouter>
   );
 }

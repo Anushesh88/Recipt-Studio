@@ -5,6 +5,8 @@ from sqlalchemy import CheckConstraint, DateTime, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.config import settings
+
 from .base import Base
 
 
@@ -45,6 +47,10 @@ class User(Base):
     @property
     def google_linked(self) -> bool:
         return self.google_sub is not None
+
+    @property
+    def is_admin(self) -> bool:
+        return self.email.lower() in settings.admin_emails
 
     __table_args__ = (
         CheckConstraint("numbering_mode IN ('sequential', 'nanoid')", name="users_numbering_mode_check"),
