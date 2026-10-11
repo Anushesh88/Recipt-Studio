@@ -46,9 +46,8 @@ Open http://localhost:5173, register, and create a template.
 
 ## Hosting it for free
 
-[DEPLOY.md](DEPLOY.md) walks through putting it online at no cost and with no
-card: Neon (database), Hugging Face Spaces (backend, deployed by a GitHub
-Action) and Cloudflare Pages (website). `render.yaml` sets up Render instead.
+[DEPLOY.md](DEPLOY.md) walks through putting it online at no cost: Neon
+(database), Render (backend, from `render.yaml`) and Cloudflare Pages (website).
 
 ## Sign in with Google
 
