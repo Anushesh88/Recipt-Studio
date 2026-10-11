@@ -23,6 +23,7 @@ from app.schemas.receipt import (
     ReceiptCreate,
     ReceiptResponse,
     ReceiptSummary,
+    ShareLink,
 )
 from app.services import (
     export_service,
@@ -31,6 +32,7 @@ from app.services import (
     qr_service,
     receipt_service,
     render_service,
+    share_service,
     totals_service,
 )
 
@@ -138,3 +140,18 @@ async def export_receipt(
     except render_service.RendererUnavailableError:
         raise renderer_unavailable_error() from None
     return file_response(export)
+
+
+@router.post("/{receipt_id}/share-link", response_model=ShareLink)
+async def share_link(
+    receipt_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ShareLink:
+    """A private link to the receipt's PDF that opens without signing in
+    (GET /public/receipts/{token}), for sending to the customer."""
+    receipt = await receipt_service.get_receipt(db, current_user, receipt_id)
+    if receipt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Receipt not found")
+    token = share_service.make_token(receipt.id)
+    return ShareLink(token=token, path=f"/public/receipts/{token}")

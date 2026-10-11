@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
+import { BarChart3, Copy, FilePlus2, History as HistoryIcon, LogOut, Pencil, ReceiptText, Settings as SettingsIcon, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '../store/authStore';
 import { createTemplate, deleteTemplate, fetchTemplate, templateKeys, useTemplates, type TemplateSummary } from '../api/templates';
@@ -101,6 +101,9 @@ export default function Templates() {
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline">
             <Link to="/history"><HistoryIcon />Receipt history</Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link to="/reports"><BarChart3 />Sales report</Link>
           </Button>
           <Button asChild variant="outline">
             <Link to="/settings"><SettingsIcon />Settings</Link>

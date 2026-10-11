@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Repeat } from "lucide-react";
+import { BarChart3, ChevronLeft, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useReceipts } from "../api/receipts";
 import { apiErrorMessage } from "../api/client";
@@ -21,6 +21,9 @@ export const History: React.FC = () => {
           Templates
         </Link>
         <h1 className="text-3xl font-bold">Receipt history</h1>
+        <Button asChild variant="outline" size="sm" className="ml-auto">
+          <Link to="/reports"><BarChart3 />Sales report</Link>
+        </Button>
       </div>
 
       {isError && <p role="alert" className="text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your receipts.")}</p>}
@@ -54,7 +57,7 @@ export const History: React.FC = () => {
                   <td className="px-4 py-3">{r.customer_name ?? <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.currency} {r.total_amount}</td>
                   <td className="px-4 py-3 text-muted-foreground">{formatDate(r.created_at)}</td>
-                  <td className="px-4 py-3"><ExportButtons receiptId={r.id} receiptNumber={r.receipt_number} size="xs" /></td>
+                  <td className="px-4 py-3"><ExportButtons receiptId={r.id} receiptNumber={r.receipt_number} size="xs" receipt={r} /></td>
                   <td className="px-4 py-3">
                     {/* a new receipt with the same customer and items (new number and date) */}
                     {r.template_id ? (

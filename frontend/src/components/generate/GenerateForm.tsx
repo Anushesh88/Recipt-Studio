@@ -324,7 +324,7 @@ export const GenerateForm: React.FC<{
               </div>
               <div>
                 <p className="mb-1.5 text-xs font-medium text-muted-foreground">Download or share</p>
-                <ExportButtons receiptId={created.id} receiptNumber={created.receipt_number} />
+                <ExportButtons receiptId={created.id} receiptNumber={created.receipt_number} receipt={{ ...created, customer_name: created.data.customer.name ?? null }} />
               </div>
               <div className="flex flex-wrap gap-2">
                 <Button type="button" variant="outline" onClick={startAnother}>Generate another</Button>

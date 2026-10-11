@@ -71,3 +71,14 @@ export async function shareReceipt(receiptId: string, receiptNumber: string): Pr
     throw new Error("Couldn't open the share sheet. Download the PDF and share it instead.");
   }
 }
+
+// A private link to the receipt's PDF that opens without signing in, for
+// sending to the customer (POST /receipts/{id}/share-link)
+export async function createShareLink(receiptId: string): Promise<string> {
+  try {
+    const res = await apiClient.post<{ token: string; path: string }>(`/receipts/${receiptId}/share-link`);
+    return new URL(res.data.path, apiClient.defaults.baseURL).toString();
+  } catch (error) {
+    throw new Error(apiErrorMessage(error, "Couldn't make a link to the receipt. Please try again."));
+  }
+}

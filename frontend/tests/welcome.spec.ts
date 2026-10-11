@@ -10,7 +10,7 @@ async function signUp(page: Page) {
   await page.getByRole('button', { name: "Don't have an account? Register" }).click();
   await page.getByLabel('Email').fill(`e2e-${Date.now()}-${Math.random().toString(36).slice(2, 6)}@example.com`);
   await page.getByLabel('Password').fill('long-enough-password');
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  await page.getByRole('button', { name: 'Sign Up', exact: true }).click();
   await page.waitForURL('**/welcome');
 }
 

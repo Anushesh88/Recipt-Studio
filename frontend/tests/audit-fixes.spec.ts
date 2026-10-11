@@ -102,7 +102,7 @@ test("signing in as someone else in the same tab shows none of the first account
   await page.getByRole('button', { name: 'Logout' }).click();
   await page.getByLabel('Email').fill(second.email);
   await page.getByLabel('Password').fill(second.password);
-  await page.getByRole('button', { name: 'Sign In' }).click();
+  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
   await expect(page.getByText('No saved templates yet')).toBeVisible();
   await expect(page.locator('[data-template-card="Alpha private template"]')).toHaveCount(0);
 
@@ -150,11 +150,11 @@ test('the register form checks the password before sending it', async ({ page })
   await page.getByLabel('Password').fill('short');
   let registered = false;
   page.on('request', (r) => { if (r.url().endsWith('/auth/register')) registered = true; });
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  await page.getByRole('button', { name: 'Sign Up', exact: true }).click();
   await expect(page.getByText('Use at least 8 characters')).toBeVisible();
   expect(registered).toBe(false);
 
   await page.getByLabel('Password').fill('long-enough-password');
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  await page.getByRole('button', { name: 'Sign Up', exact: true }).click();
   await page.waitForURL('**/templates');
 });

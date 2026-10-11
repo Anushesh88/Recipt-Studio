@@ -255,6 +255,13 @@ POST   /receipts           (template_id + data -> validate variables, number,
                             totals, store snapshot)
 GET    /receipts           GET /receipts/{id}
 GET    /receipts/{id}/export?format=pdf|png
+POST   /receipts/{id}/share-link  ({token, path}: a private link to the PDF,
+                            for WhatsApp; signed with SECRET_KEY, no expiry)
+GET    /public/receipts/{token}   (no sign-in: that receipt's PDF, inline)
+GET    /reports/sales?start=&end=[&currency=&document_type=]   (by receipt
+                            date: items with quantity, amount = qty x price and
+                            receipt count; totals subtotal, discount, taxable,
+                            tax, cgst, sgst, igst, total; one currency at a time)
 POST   /preview            (canvas + data -> PDF/PNG/HTML without saving or
                             consuming a number)
 

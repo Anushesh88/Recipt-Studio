@@ -8,6 +8,7 @@ import { Generate } from './pages/Generate';
 import { History } from './pages/History';
 import { Settings } from './pages/Settings';
 import { Welcome } from './pages/Welcome';
+import { Reports } from './pages/Reports';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -24,6 +25,7 @@ function App() {
         <Route path="/history" element={requireAuth(<History />)} />
         <Route path="/settings" element={requireAuth(<Settings />)} />
         <Route path="/welcome" element={requireAuth(<Welcome />)} />
+        <Route path="/reports" element={requireAuth(<Reports />)} />
         <Route path="*" element={<Navigate to="/templates" />} />
       </Routes>
     </BrowserRouter>

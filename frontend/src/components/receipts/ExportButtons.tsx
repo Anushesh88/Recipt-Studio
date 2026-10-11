@@ -2,12 +2,16 @@ import React, { useState } from "react";
 import { FileDown, ImageDown, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { canShareFiles, downloadReceipt, shareReceipt, type ExportFormat } from "../../api/exports";
+import type { ReceiptSummary } from "../../api/receipts";
+import { WhatsAppButton } from "./WhatsAppButton";
 
 // Download buttons for one stored receipt (rendered server-side)
-export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string; size?: "xs" | "sm" }> = ({
+// `receipt` (when given) adds the WhatsApp button
+export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string; size?: "xs" | "sm"; receipt?: ReceiptSummary }> = ({
   receiptId,
   receiptNumber,
   size = "sm",
+  receipt,
 }) => {
   const [busy, setBusy] = useState<ExportFormat | "share" | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string;
 
   return (
     <div className="space-y-1">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" size={size} disabled={busy !== null} onClick={() => download("pdf")} aria-label={`Download ${receiptNumber} as PDF`}>
           <FileDown />
           {busy === "pdf" ? "Preparing…" : "PDF"}
@@ -43,6 +47,7 @@ export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string;
             {busy === "share" ? "Preparing…" : "Share"}
           </Button>
         )}
+        {receipt && <WhatsAppButton receipt={receipt} size={size} />}
       </div>
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     </div>

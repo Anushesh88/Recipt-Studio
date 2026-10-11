@@ -68,6 +68,8 @@ test('the gallery shows each kind and copies a template into the account', async
 
 test.describe('Sign in with Google', () => {
   test('is hidden until the backend has a Google client ID', async ({ page }) => {
+    // (whatever this machine's backend/.env says)
+    await page.route(`${API}/auth/providers`, (route) => route.fulfill({ headers: CORS, json: { google_client_id: null } }));
     await page.goto(`${APP}/login`);
     await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
     await expect(page.locator('[data-google-sign-in]')).toHaveCount(0);

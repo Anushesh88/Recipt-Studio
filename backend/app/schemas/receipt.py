@@ -124,6 +124,12 @@ class ReceiptSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ShareLink(BaseModel):
+    """POST /receipts/{id}/share-link: path is relative to the API's address."""
+    token: str
+    path: str
+
+
 class ReceiptResponse(ReceiptSummary):
     data: ReceiptDataOut
     template_snapshot: Canvas

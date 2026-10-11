@@ -12,7 +12,9 @@ from app.api.assets import router as assets_router
 from app.api.auth import router as auth_router
 from app.api.catalog import router as catalog_router
 from app.api.preview import router as preview_router
+from app.api.public import router as public_router
 from app.api.receipts import router as receipts_router
+from app.api.reports import router as reports_router
 from app.api.templates import router as templates_router
 
 app = FastAPI(title="Receipt Studio API")
@@ -55,6 +57,8 @@ app.include_router(assets_router, prefix="/assets", tags=["assets"])
 app.include_router(preview_router, prefix="/preview", tags=["preview"])
 # Saved customers and items: /customers, /items
 app.include_router(catalog_router, tags=["catalog"])
+app.include_router(reports_router, prefix="/reports", tags=["reports"])
+app.include_router(public_router, prefix="/public", tags=["public"])
 
 class HealthResponse(BaseModel):
     status: Literal["ok"]

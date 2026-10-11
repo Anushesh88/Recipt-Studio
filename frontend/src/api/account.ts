@@ -31,11 +31,11 @@ export const hasGstProfile = (account: Account | undefined): account is Account 
 
 export const accountKeys = { me: ['account'] as const };
 
+const fetchAccount = async () => (await apiClient.get<Account>('/auth/me')).data;
+export const accountQuery = { queryKey: accountKeys.me, queryFn: fetchAccount };
+
 export function useAccount() {
-  return useQuery({
-    queryKey: accountKeys.me,
-    queryFn: async () => (await apiClient.get<Account>('/auth/me')).data,
-  });
+  return useQuery(accountQuery);
 }
 
 export async function updateAccount(changes: AccountChanges): Promise<Account> {
