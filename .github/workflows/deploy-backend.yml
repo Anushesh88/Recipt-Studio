@@ -1,0 +1,29 @@
+# Sends backend/ to the Hugging Face Space whenever it changes on main; the
+# Space then rebuilds the Docker image and restarts. Setup: DEPLOY.md
+name: Deploy backend to Hugging Face
+
+on:
+  push:
+    branches: [main]
+    paths: ["backend/**", "deploy/huggingface_space.py", ".github/workflows/deploy-backend.yml"]
+  workflow_dispatch: # the "Run workflow" button, for the first deploy
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Does nothing until the Space is set up (the HF_SPACE variable exists)
+    if: ${{ vars.HF_SPACE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "huggingface_hub>=0.25"
+      - run: python deploy/huggingface_space.py
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
