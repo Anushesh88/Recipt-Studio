@@ -8,8 +8,13 @@ Three free services, each doing one job:
 | Backend (the API and PDF rendering) | **Render** (Docker web service, Singapore) | 512 MB; **sleeps after 15 idle minutes, and the next visit waits about a minute** |
 | Website (what users open) | **Cloudflare Pages** | Unlimited traffic, commercial use allowed, 500 builds a month |
 
-No credit card is needed. Sign up for each with your GitHub account. It
-takes about 30 minutes the first time.
+Everything stays free, but **Render asks for a card (or a Visa / Mastercard debit
+card) to verify you**: a $1 hold that is released, with no charge on the Free
+plan. Neon and Cloudflare don't need one. Sign up for each with your GitHub
+account. It takes about 30 minutes the first time.
+
+> Hosts checked in October 2026: Koyeb and Oracle Cloud also ask for a card;
+> Hugging Face's Docker Spaces now need its paid PRO plan.
 
 > Vercel's free plan is for non-commercial use only, so it isn't used here.
 > Render's own free Postgres is deleted after 30 days, so the database lives on Neon.
@@ -46,8 +51,17 @@ You don't need to create any tables. The backend does that itself when it starts
 
    `SECRET_KEY` is generated for you. Don't change it later, or everyone gets
    logged out and all WhatsApp receipt links stop working.
-5. Click **Apply**. The first build takes 5 to 10 minutes. Click the service and
-   watch **Logs**; it's done when you see `Uvicorn running on http://0.0.0.0:...`.
+5. Click **Apply**. When Render asks for a card, add it (verification only). The
+   first build takes 5 to 10 minutes. Click the service and watch **Logs**; it's
+   done when you see `Uvicorn running on http://0.0.0.0:...`.
+
+   **Or set it up by hand** (same result): **+ New > Web Service**, pick the repo,
+   then choose **Docker**, branch `main`, region **Singapore**, root directory
+   `backend`, instance type **Free**, and under **Advanced** set the health check
+   path to `/health`. Add five environment variables: `APP_ENV` = `production`,
+   `SECRET_KEY` (make one with
+   `.venv/Scripts/python -c "import secrets; print(secrets.token_urlsafe(48))"`
+   in `backend/`), `DATABASE_URL`, `CORS_ORIGINS` = `*`, and `GOOGLE_CLIENT_ID`.
 6. At the top of the service page, copy its address, for example
    `https://receipt-studio-api.onrender.com`. Yours may have extra letters if the
    name was taken. Check it works: open `https://<your-address>/health`
