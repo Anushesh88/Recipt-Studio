@@ -7,7 +7,7 @@ requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.111.0",
     "uvicorn[standard]>=0.30.1",
-    "sqlalchemy>=2.0.30",
+    "sqlalchemy[asyncio]>=2.0.30",  # [asyncio] brings greenlet, which the async engine needs
     "asyncpg>=0.29.0",
     "aiosqlite>=0.20.0",  # driver for the default local-dev DATABASE_URL (sqlite+aiosqlite)
     "alembic>=1.13.1",
