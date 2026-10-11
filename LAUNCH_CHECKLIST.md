@@ -21,9 +21,10 @@ https://receipt-studio-5tp.pages.dev (backend: https://recipt-studio.onrender.co
 - [ ] **Error alerts:** Sentry free plan, for the backend and the website
 - [ ] **Daily database backup:** automated pg_dump of Neon, kept privately
 - [ ] **Keep the server awake (optional):** cron-job.org pings /health every 10 minutes (avoids the one-minute wake-up)
+- [ ] **UPI QR code with the bill amount:** a QR on receipts / invoices that opens any UPI app with your UPI ID and the exact total filled in (upi://pay?pa=...&am=...&cu=INR)
 
 ## Later
 - [ ] Your own domain (e.g. receiptstudio.in), then add it to CORS_ORIGINS and Google's authorized origins
 - [ ] Save the customer's phone number for one-tap WhatsApp
-- [ ] UPI QR code with the bill amount; mark bills paid / unpaid
+- [ ] Mark bills paid / unpaid
 - [ ] Hindi; credit notes; GSTR-1 export
