@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -104,6 +105,13 @@ export default function Login() {
           {isRegister ? 'Already have an account? Login' : "Don't have an account? Register"}
         </Button>
       </div>
+      <p className="mt-4 text-center text-xs text-muted-foreground">
+        {isRegister && 'By creating an account you agree to the '}
+        <Link to="/terms" className="hover:underline">Terms of Service</Link>
+        {isRegister ? ' and ' : ' · '}
+        <Link to="/privacy" className="hover:underline">Privacy Policy</Link>
+        {isRegister && '.'}
+      </p>
     </div>
   );
 }

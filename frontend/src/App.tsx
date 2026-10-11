@@ -10,6 +10,7 @@ import { Settings } from './pages/Settings';
 import { Welcome } from './pages/Welcome';
 import { Reports } from './pages/Reports';
 import { WakingUpNotice } from './components/WakingUpNotice';
+import { PrivacyPolicy, TermsOfService } from './pages/Legal';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -20,6 +21,9 @@ function App() {
       <WakingUpNotice />
       <Routes>
         <Route path="/login" element={token ? <Navigate to="/templates" /> : <Login />} />
+        {/* Public, signed in or not */}
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/terms" element={<TermsOfService />} />
         <Route path="/templates" element={requireAuth(<Templates />)} />
         {/* /editor = new blank template, /editor/:id = saved template */}
         <Route path="/editor/:id?" element={requireAuth(<Editor />)} />
