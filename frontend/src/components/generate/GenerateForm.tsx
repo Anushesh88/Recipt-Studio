@@ -26,6 +26,7 @@ import { COMMON_GST_RATES, COMMON_UNITS, STATE_OPTIONS, UNIT_MAX_LENGTH, gstinSt
 import { ReceiptPreview } from "../preview/ReceiptPreview";
 import { currencyPrefix } from "../../lib/whatsapp";
 import { ExportButtons } from "../receipts/ExportButtons";
+import { SuggestInput } from "./SuggestInput";
 import { useElementWidth } from "./useElementWidth";
 import {
   CURRENCY_CODE_LENGTH,
@@ -155,6 +156,29 @@ export const GenerateForm: React.FC<{
     }
   };
 
+  // Picked from the dropdown: the saved item's price (and GST details) replace
+  // what's there, since that's what was chosen
+  const pickItem = (index: number, id: string) => {
+    const saved = savedItems.data?.find((i) => i.id === id);
+    if (!saved) return;
+    const set = (path: Path<GenerateValues>, value: string | null | undefined) =>
+      setValue(path, value ?? "", { shouldDirty: true, shouldValidate: true });
+    set(`items.${index}.description`, saved.description);
+    set(`items.${index}.unit_price`, saved.unit_price);
+    if (gst) {
+      set(`items.${index}.hsn`, saved.hsn);
+      set(`items.${index}.unit`, saved.unit);
+      set(`items.${index}.gst_rate`, saved.gst_rate === null ? "" : String(Number(saved.gst_rate)));
+    }
+  };
+  const pickCustomer = (name: string) => {
+    setValue("customer.name", name, { shouldDirty: true, shouldValidate: true });
+    onCustomerName(name);
+  };
+  const money = currencyPrefix(gst ? GST_CURRENCY : getValues("receipt.currency") || GST_CURRENCY);
+  const itemSuggestions = savedItems.data?.map((i) => ({ key: i.id, label: i.description, hint: `${money}${i.unit_price}` }));
+  const customerSuggestions = savedCustomers.data?.map((c) => ({ key: c.id, label: c.name, hint: c.gstin ?? undefined }));
+
   // A name typed before the saved lists arrived is matched once they do
   const matchedOnLoad = React.useRef({ customers: false, items: false });
   useEffect(() => {
@@ -242,12 +266,21 @@ export const GenerateForm: React.FC<{
         key === "customer.name" ? { onChange: (e: React.ChangeEvent<HTMLInputElement>) => onCustomerName(e.target.value) }
         : key === "customer.gstin" ? { onChange: (e: React.ChangeEvent<HTMLInputElement>) => onCustomerGstin(e.target.value) }
         : {};
-      control = (
+      control = key === "customer.name" ? (
+        <SuggestInput
+          id={id}
+          maxLength={FIELD_MAX_LENGTH[key]}
+          listLabel="Saved customers"
+          suggestions={customerSuggestions}
+          onPick={(s) => pickCustomer(s.label)}
+          registration={register(path, handlers)}
+        />
+      ) : (
         <Input
           id={id}
           type={key === "customer.email" ? "email" : key === "receipt.date" ? "date" : "text"}
           maxLength={FIELD_MAX_LENGTH[key]}
-          list={key === "receipt.payment_method" ? "payment-methods" : key === "customer.name" ? "saved-customers" : undefined}
+          list={key === "receipt.payment_method" ? "payment-methods" : undefined}
           className={key === "customer.gstin" ? "uppercase placeholder:normal-case" : undefined}
           placeholder={key === "customer.gstin" && gst ? "Blank if the buyer isn't registered" : undefined}
           autoComplete="off"
@@ -286,13 +319,14 @@ export const GenerateForm: React.FC<{
 
   const description = (index: number) => (
     <>
-      <Input
+      <SuggestInput
         aria-label={`Item ${index + 1} description`}
         placeholder="Description"
-        list="saved-items"
-        autoComplete="off"
         maxLength={SHORT_TEXT_MAX_LENGTH}
-        {...register(`items.${index}.description`, { onChange: (e) => onItemDescription(index, e.target.value) })}
+        listLabel="Saved items"
+        suggestions={itemSuggestions}
+        onPick={(s) => pickItem(index, s.key)}
+        registration={register(`items.${index}.description`, { onChange: (e) => onItemDescription(index, e.target.value) })}
       />
       <FieldError message={err(`items.${index}.description`)} />
     </>
@@ -309,8 +343,6 @@ export const GenerateForm: React.FC<{
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
       <div className="w-full border-b border-border bg-gray-50 p-4 lg:w-[34rem] lg:shrink-0 lg:overflow-y-auto lg:border-r lg:border-b-0">
-        <datalist id="saved-customers">{savedCustomers.data?.map((c) => <option key={c.id} value={c.name} />)}</datalist>
-        <datalist id="saved-items">{savedItems.data?.map((i) => <option key={i.id} value={i.description} />)}</datalist>
         {created ? (
           <div className="space-y-4">
             <Section title={gst ? "Invoice created" : "Receipt created"}>
