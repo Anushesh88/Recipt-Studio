@@ -33,7 +33,7 @@ function saveBlob(blob: Blob, filename: string) {
 }
 
 // The server-rendered PDF / PNG, fetched with the auth header
-async function fetchReceiptFile(receiptId: string, format: ExportFormat, receiptNumber: string): Promise<File> {
+export async function fetchReceiptFile(receiptId: string, format: ExportFormat, receiptNumber: string): Promise<File> {
   try {
     const res = await apiClient.get<Blob>(`/receipts/${receiptId}/export`, { params: { format }, responseType: 'blob' });
     const disposition = String(res.headers['content-disposition'] ?? '');

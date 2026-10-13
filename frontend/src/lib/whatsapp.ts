@@ -19,7 +19,7 @@ export function whatsappUrl(phone: string, message: string): string {
 
 export function receiptMessage(details: {
   customerName: string | null; businessName: string | null; kind: "receipt" | "invoice";
-  number: string; total: string; currency: string; link: string;
+  number: string; total: string; currency: string; link: string | null;
 }): string {
   const greeting = details.customerName ? `Hello ${details.customerName},` : "Hello,";
   const from = details.businessName ? ` from ${details.businessName}` : "";

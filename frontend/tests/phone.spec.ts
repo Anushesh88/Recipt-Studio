@@ -101,3 +101,23 @@ test('History shows cards, and the report keeps the amounts on screen', async ({
   const cell = (await row.locator('td').last().boundingBox())!;
   expect(cell.x + cell.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
+
+test('WhatsApp on a phone sends the PDF file, not a link', async ({ page }) => {
+  await shop(page);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shared?: { names: string[]; text: string } };
+    Object.assign(navigator, {
+      canShare: () => true,
+      share: async (data: { files: File[]; text: string }) => { w.__shared = { names: data.files.map((f) => f.type), text: data.text }; },
+    });
+  });
+  await page.goto(`${APP}/history`);
+  await page.getByRole('button', { name: 'Send R-0001 on WhatsApp' }).click();
+  const send = page.getByRole('button', { name: 'Send PDF on WhatsApp' });
+  await expect(send).toBeEnabled();
+  await send.click();
+  const shared = await page.evaluate(() => (window as unknown as { __shared: { names: string[]; text: string } }).__shared);
+  expect(shared.names).toEqual(['application/pdf']);
+  expect(shared.text).toContain('R-0001');
+  expect(shared.text).not.toContain('http');
+});
