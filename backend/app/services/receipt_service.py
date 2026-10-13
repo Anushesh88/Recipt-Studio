@@ -47,6 +47,13 @@ GST_OPTIONAL_VARIABLES = variables_service.OPTIONAL_VARIABLES | {
 }
 
 
+# {{business.<key>}}: the account column it comes from
+PROFILE_COLUMNS = {
+    "phone": "business_phone", "email": "business_email", "upi_id": "upi_id",
+    "pan": "pan", "bank_details": "bank_details", "licence": "licence",
+}
+
+
 class TemplateNotFoundError(Exception):
     pass
 
@@ -76,6 +83,7 @@ def variable_values(
         "business.name": data.business.name or "",
         "business.address": data.business.address or "",
         "business.gstin": data.business.gstin or "",
+        **{f"business.{key}": getattr(data.business, key) or "" for key in variables_service.PROFILE_KEYS},
         "customer.name": data.customer.name or "",
         "customer.email": data.customer.email or "",
         "customer.address": data.customer.address or "",
@@ -107,6 +115,7 @@ def _with_account_details(data: ReceiptDataIn, user: User, gst: bool) -> Receipt
     business = data.business.model_copy(update={
         "address": user.business_address,
         "gstin": user.gstin,
+        **{key: getattr(user, column) for key, column in PROFILE_COLUMNS.items()},
         **({"name": user.business_name} if gst else {}),
     })
     return data.model_copy(update={"business": business})

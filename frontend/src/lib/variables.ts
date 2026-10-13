@@ -30,7 +30,18 @@ export const BUILTIN_VARIABLES: readonly BuiltinVariable[] = [
   { key: "customer.gstin", label: "Customer GSTIN", sample: "29AAGCB7383J1Z4" },
   { key: "receipt.place_of_supply", label: "Place of supply", sample: "Maharashtra (27)" },
   { key: "receipt.reverse_charge", label: "Reverse charge", sample: "No" },
+  // The business profile, from Settings (backend variables_service.PROFILE_VARIABLES)
+  { key: "business.phone", label: "Business phone", sample: "+91 98765 43210" },
+  { key: "business.email", label: "Business email", sample: "hello@acmecafe.in" },
+  { key: "business.upi_id", label: "UPI ID", sample: "acmecafe@okhdfc" },
+  { key: "business.pan", label: "PAN", sample: "AAPFU0939F" },
+  { key: "business.bank_details", label: "Bank details", sample: "HDFC Bank, A/c 50100123456789, IFSC HDFC0001234" },
+  { key: "business.licence", label: "Licence numbers", sample: "FSSAI 11521999000123" },
 ];
+
+export const PROFILE_VARIABLES: ReadonlySet<string> = new Set([
+  "business.phone", "business.email", "business.upi_id", "business.pan", "business.bank_details", "business.licence",
+]);
 
 const BUILTIN_KEYS = new Set(BUILTIN_VARIABLES.map((v) => v.key));
 
@@ -90,13 +101,22 @@ export type VariableValues = Record<string, string>;
 
 export const SAMPLE_VALUES: VariableValues = Object.fromEntries(BUILTIN_VARIABLES.map((v) => [v.key, v.sample]));
 
-// Replaces placeholders with values; keys without a value use `fallback`
+// e.g. "Phone: {{business.phone}}" for a business without a phone number
+const blankProfileLine = (line: string, values: VariableValues) => {
+  const keys = findVariables(line);
+  return keys.some((key) => PROFILE_VARIABLES.has(key)) && !keys.some((key) => values[key]?.trim());
+};
+
+// Replaces placeholders with values; keys without a value use `fallback`. A
+// line that uses a business profile detail and has nothing to show (every
+// variable on it empty) is left out, as on the server (variables_service.resolve)
 export function resolveVariables(
   text: string,
   values: VariableValues,
   fallback: (key: string) => string = () => "",
 ): string {
-  return text.replace(variableRegex(), (_raw, key: string) => values[key] ?? fallback(key));
+  const lines = text.split("\n").filter((line) => !blankProfileLine(line, values));
+  return lines.join("\n").replace(variableRegex(), (_raw, key: string) => values[key] ?? fallback(key));
 }
 
 // Human label for a variable key, e.g. "custom.table_no" -> "Table no"

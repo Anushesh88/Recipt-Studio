@@ -12,7 +12,11 @@ import { col, design } from "./templateBuilder";
 // Made-up details the gallery fills the template with, so each one shows the
 // business it's for
 export interface StarterSample {
-  business: { name: string; address: string; gstin?: string };
+  business: {
+    name: string; address: string; gstin?: string;
+    // Settings' business profile, for the gallery thumbnail
+    phone?: string; email?: string; upi_id?: string; pan?: string; bank_details?: string; licence?: string;
+  };
   customer?: { name?: string; address?: string; gstin?: string };
   receipt?: { payment_method?: string; notes?: string; place_of_supply?: string };
   custom?: Record<string, string>;
@@ -158,14 +162,14 @@ const CAFE = design({ preset: "thermal80", font: "Poppins", color: "#1F2937" }, 
     .divider("rule-bottom", "dotted", GREY)
     .totals("totals", ["subtotal", "tax", "total"], { width: 180, fontSize: 12 })
     .gap(8)
-    .text("paid", "Paid by {{receipt.payment_method}}", { fontSize: 10, align: "center", color: GREY })
+    .text("paid", "Paid by {{receipt.payment_method}}\nUPI: {{business.upi_id}}", { fontSize: 10, align: "center", color: GREY })
     .gap(4)
     .text("thanks", "Thank you! See you again soon.", { fontSize: 11, fontWeight: 600, align: "center" });
 });
 
 const RESTAURANT = design({ preset: "thermal80", font: "Roboto Mono" }, (s) => {
   s.text("name", "{{business.name}}", { fontSize: 15, fontWeight: 700, align: "center" })
-    .text("address", "{{business.address}}", { fontSize: 10, align: "center" }, 2)
+    .text("address", "{{business.address}}\nPh: {{business.phone}}", { fontSize: 10, align: "center" }, 3)
     .divider("rule-1")
     .text("meta", "Bill: {{receipt.number}}\nDate: {{receipt.date}}\nTable: {{custom.table_no}}\nCovers: {{custom.covers}}\nServer: {{custom.server_name}}", { fontSize: 10 })
     .divider("rule-2")
@@ -203,7 +207,7 @@ const BAKERY = design({ preset: "a5", font: "Merriweather", color: BAKERY_BROWN,
 const SALON_ROSE = "#9D174D";
 const SALON = design({ preset: "a5", font: "Montserrat", color: "#1F1F1F" }, (s) => {
   s.text("name", "{{business.name}}", { fontSize: 22, fontWeight: 700, color: SALON_ROSE })
-    .text("address", "{{business.address}}", { fontSize: 11, color: GREY })
+    .text("address", "{{business.address}}\n{{business.phone}}", { fontSize: 11, color: GREY })
     .gap(4)
     .divider("rule", "solid", SALON_ROSE, 2)
     .gap(8)
@@ -224,7 +228,7 @@ const SALON = design({ preset: "a5", font: "Montserrat", color: "#1F1F1F" }, (s)
 const CLINIC_TEAL = "#0F766E";
 const CLINIC = design({ preset: "a5", font: "Lato", color: "#1F2937" }, (s) => {
   s.columns([
-    [0.6, (c) => c.text("name", "{{business.name}}", { fontSize: 20, fontWeight: 700, color: CLINIC_TEAL }).text("address", "{{business.address}}", { fontSize: 11, color: GREY }, 2)],
+    [0.6, (c) => c.text("name", "{{business.name}}", { fontSize: 20, fontWeight: 700, color: CLINIC_TEAL }).text("address", "{{business.address}}\nPh: {{business.phone}}", { fontSize: 11, color: GREY }, 3)],
     [0.4, (c) => c.text("meta", "Receipt {{receipt.number}}\nDate: {{receipt.date}}", { fontSize: 11, align: "right" })],
   ])
     .gap(4)
@@ -246,7 +250,7 @@ const CLINIC = design({ preset: "a5", font: "Lato", color: "#1F2937" }, (s) => {
 const TUITION_NAVY = "#1E3A8A";
 const TUITION = design({ preset: "a5", font: "Merriweather", color: "#1F2937" }, (s) => {
   s.text("name", "{{business.name}}", { fontSize: 20, fontWeight: 700, align: "center", color: TUITION_NAVY })
-    .text("address", "{{business.address}}", { fontSize: 11, align: "center", color: GREY })
+    .text("address", "{{business.address}}\nPh: {{business.phone}}", { fontSize: 11, align: "center", color: GREY })
     .gap(8)
     .text("title", "FEE RECEIPT", { fontSize: 13, fontWeight: 700, align: "center", color: TUITION_NAVY })
     .divider("rule", "solid", TUITION_NAVY)
@@ -284,7 +288,7 @@ const RENT = design({ preset: "a5", font: "Open Sans" }, (s) => {
     .totals("totals", ["total"], { width: 220 })
     .gap(16)
     .columns([
-      [0.55, (c) => c.text("landlord", "Landlord: {{business.name}}\nPAN: {{custom.landlord_pan}}\n{{business.address}}", { fontSize: 11 }, 4)],
+      [0.55, (c) => c.text("landlord", "Landlord: {{business.name}}\nPAN: {{business.pan}}\n{{business.address}}", { fontSize: 11 }, 4)],
       [0.45, (c) => c.signature("sign", "Landlord's signature", { height: 72 })],
     ])
     .gap(8)
@@ -309,7 +313,7 @@ const GYM = design({ preset: "thermal80", font: "Montserrat" }, (s) => {
 const FREELANCE_PURPLE = "#6D28D9";
 const FREELANCE = design({ preset: "a4", font: "Poppins", color: "#1F2937" }, (s) => {
   s.columns([
-    [0.6, (c) => c.logo("logo", 120, 48, "left").gap(8).text("name", "{{business.name}}", { fontSize: 22, fontWeight: 700, color: FREELANCE_PURPLE }).text("address", "{{business.address}}", { fontSize: 11, color: GREY }, 2)],
+    [0.6, (c) => c.logo("logo", 120, 48, "left").gap(8).text("name", "{{business.name}}", { fontSize: 22, fontWeight: 700, color: FREELANCE_PURPLE }).text("address", "{{business.address}}\n{{business.email}}\n{{business.phone}}", { fontSize: 11, color: GREY }, 4)],
     [0.4, (c) => c.text("title", "PAYMENT RECEIPT", { fontSize: 16, fontWeight: 700, align: "right", color: FREELANCE_PURPLE }).text("meta", "No. {{receipt.number}}\n{{receipt.date}}", { fontSize: 11, align: "right" })],
   ])
     .gap(12)
@@ -323,7 +327,8 @@ const FREELANCE = design({ preset: "a4", font: "Poppins", color: "#1F2937" }, (s
     .table("items", [col("description", "Description", 0.52), col("qty", "Qty", 0.12), col("unit_price", "Rate", 0.16), col("line_total", "Amount", 0.2)], { rowPadding: 8 })
     .gap(12)
     .columns([
-      [0.55, (c) => c.text("notes-label", "Notes", { fontSize: 10, fontWeight: 700 }).text("notes", "{{receipt.notes}}", { fontSize: 11 }, 3)],
+      [0.55, (c) => c.text("notes-label", "Notes", { fontSize: 10, fontWeight: 700 }).text("notes", "{{receipt.notes}}", { fontSize: 11 }, 3)
+        .gap(8).text("bank", "Bank: {{business.bank_details}}\nUPI: {{business.upi_id}}", { fontSize: 10, color: GREY }, 3)],
       [0.45, (c) => c.totals("totals", ["subtotal", "discount", "tax", "total"], { width: 320 })],
     ])
     .gap(32)
@@ -359,7 +364,7 @@ const RESTAURANT_GST = design({ preset: "thermal80", documentType: "gst_invoice"
 const PHARMACY_GREEN = "#065F46";
 const PHARMACY = design({ preset: "a5", documentType: "gst_invoice", font: "Roboto", color: "#1F2937" }, (s) => {
   s.columns([
-    [0.6, (c) => c.text("name", "{{business.name}}", { fontSize: 18, fontWeight: 700, color: PHARMACY_GREEN }).text("supplier", `${SUPPLIER}\nD.L. no: 20B-______ / 21B-______`, { fontSize: 10 }, 4)],
+    [0.6, (c) => c.text("name", "{{business.name}}", { fontSize: 18, fontWeight: 700, color: PHARMACY_GREEN }).text("supplier", `${SUPPLIER}\n{{business.licence}}`, { fontSize: 10 }, 4)],
     [0.4, (c) => c.text("title", "TAX INVOICE", { fontSize: 13, fontWeight: 700, align: "right", color: PHARMACY_GREEN }).text("invoice", "No. {{receipt.number}}\nDate: {{receipt.date}}", { fontSize: 10, align: "right" })],
   ])
     .gap(4)
@@ -579,7 +584,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "cafe-receipt", name: "Café bill", business: "Café", canvas: CAFE,
     description: "Table number, a tagline and a friendly sign-off.",
     sample: {
-      business: { name: "Brew & Bloom Café", address: "" },
+      business: { name: "Brew & Bloom Café", address: "", upi_id: "brewbloom@okhdfc" },
       receipt: { payment_method: "UPI" }, custom: { table_no: "7" },
       items: [{ description: "Cappuccino", qty: "2", unit_price: "180" }, { description: "Masala chai", qty: "1", unit_price: "60" }, { description: "Blueberry muffin", qty: "1", unit_price: "140" }],
       tax_percent: "5",
@@ -589,7 +594,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "restaurant-receipt", name: "Restaurant bill", business: "Restaurant", canvas: RESTAURANT,
     description: "Classic monospace bill with table, covers and server.",
     sample: {
-      business: { name: "Spice Route Kitchen", address: "22 FC Road, Pune 411004" },
+      business: { name: "Spice Route Kitchen", address: "22 FC Road, Pune 411004", phone: "020 2567 8910" },
       custom: { table_no: "12", covers: "4", server_name: "Ravi" },
       items: [{ description: "Paneer tikka", qty: "1", unit_price: "320" }, { description: "Dal makhani", qty: "1", unit_price: "280" }, { description: "Butter naan", qty: "4", unit_price: "60" }],
       tax_percent: "5", discount: "50",
@@ -609,7 +614,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "salon-receipt", name: "Salon & spa", business: "Salon & spa", canvas: SALON,
     description: "Services, stylist and a rebooking reminder.",
     sample: {
-      business: { name: "Glow Studio", address: "2nd floor, Indiranagar 100 Ft Road, Bengaluru" },
+      business: { name: "Glow Studio", address: "2nd floor, Indiranagar 100 Ft Road, Bengaluru", phone: "+91 98450 12345" },
       customer: { name: "Meera Iyer" }, receipt: { payment_method: "Card" }, custom: { stylist: "Sana" },
       items: [{ description: "Haircut & styling", qty: "1", unit_price: "800" }, { description: "Hair spa", qty: "1", unit_price: "1500" }, { description: "Manicure", qty: "1", unit_price: "600" }],
       tax_percent: "18", discount: "200",
@@ -619,7 +624,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "clinic-receipt", name: "Clinic consultation", business: "Clinic", canvas: CLINIC,
     description: "Patient, doctor and a space for the clinic stamp.",
     sample: {
-      business: { name: "Sunrise Family Clinic", address: "14 Park Street, Kolkata 700016" },
+      business: { name: "Sunrise Family Clinic", address: "14 Park Street, Kolkata 700016", phone: "033 2229 4455" },
       customer: { name: "Arjun Sen" }, receipt: { payment_method: "Cash" }, custom: { age_sex: "42 / M", doctor: "Dr. R. Banerjee" },
       items: [{ description: "Consultation fee", qty: "1", unit_price: "600" }, { description: "Blood sugar test", qty: "1", unit_price: "150" }, { description: "ECG", qty: "1", unit_price: "400" }],
     },
@@ -628,7 +633,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "tuition-receipt", name: "Tuition fee receipt", business: "Tuition & coaching", canvas: TUITION,
     description: "Student, batch and fee period, signed by the receiver.",
     sample: {
-      business: { name: "Bright Minds Academy", address: "Sector 15, Rohini, Delhi" },
+      business: { name: "Bright Minds Academy", address: "Sector 15, Rohini, Delhi", phone: "+91 98110 22334" },
       customer: { name: "Kabir Malhotra" }, receipt: { payment_method: "UPI" }, custom: { batch: "Class 10 - Science", fee_period: "October 2026" },
       items: [{ description: "Tuition fee", qty: "1", unit_price: "4500" }, { description: "Study material", qty: "1", unit_price: "800" }, { description: "Test series", qty: "1", unit_price: "500" }],
     },
@@ -637,9 +642,9 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "rent-receipt", name: "House rent receipt", business: "Landlord", canvas: RENT,
     description: "Rent receipt for HRA claims, with the landlord's PAN.",
     sample: {
-      business: { name: "Suresh Kulkarni", address: "Flat 302, Lotus Residency, Kothrud, Pune" },
+      business: { name: "Suresh Kulkarni", address: "Flat 302, Lotus Residency, Kothrud, Pune", pan: "ABCPK1234D" },
       customer: { name: "Neha Joshi" }, receipt: { payment_method: "bank transfer" },
-      custom: { rent_period: "October 2026", property_address: "Flat 302, Lotus Residency, Kothrud, Pune", landlord_pan: "ABCPK1234D" },
+      custom: { rent_period: "October 2026", property_address: "Flat 302, Lotus Residency, Kothrud, Pune" },
       items: [{ description: "House rent, October 2026", qty: "1", unit_price: "18000" }, { description: "Maintenance", qty: "1", unit_price: "1500" }, { description: "Parking", qty: "1", unit_price: "500" }],
     },
   },
@@ -657,7 +662,10 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "freelance-receipt", name: "Freelancer payment receipt", business: "Freelancer", canvas: FREELANCE,
     description: "A clean A4 receipt for clients, with your logo and notes.",
     sample: {
-      business: { name: "Ananya Rao Photography", address: "Jubilee Hills, Hyderabad" },
+      business: {
+        name: "Ananya Rao Photography", address: "Jubilee Hills, Hyderabad", email: "hello@ananyarao.in", phone: "+91 98480 55667",
+        bank_details: "HDFC Bank, A/c 50100123456789, IFSC HDFC0001234", upi_id: "ananyarao@okicici",
+      },
       customer: { name: "Kapoor Weddings" }, receipt: { payment_method: "bank transfer", notes: "Edited photos will be delivered within 10 days." },
       custom: { project: "Engagement shoot, 12 Oct" },
       items: [{ description: "Photography (6 hours)", qty: "1", unit_price: "25000" }, { description: "Edited photos", qty: "150", unit_price: "40" }, { description: "Travel", qty: "1", unit_price: "2000" }],
@@ -692,7 +700,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "gst-pharmacy", name: "Pharmacy invoice", business: "Pharmacy", canvas: PHARMACY,
     description: "Medicines with HSN and rate, drug licence in the header.",
     sample: {
-      business: { name: "Lifeline Medicals", address: "Anna Nagar, Chennai 600040", gstin: "33AAACT2727Q1Z3" },
+      business: { name: "Lifeline Medicals", address: "Anna Nagar, Chennai 600040", gstin: "33AAACT2727Q1Z3", licence: "D.L. no: TN-02-20B-1234 / 21B-1234" },
       customer: { name: "K. Lakshmi", address: "Anna Nagar, Chennai" }, receipt: { payment_method: "UPI" },
       items: [{ description: "Paracetamol 650 (15)", qty: "2", unit_price: "30", hsn: "3004", unit: "PAC", gst_rate: "5" }, { description: "Vitamin D3 sachet", qty: "4", unit_price: "35", hsn: "3004", unit: "PCS", gst_rate: "5" }, { description: "Digital thermometer", qty: "1", unit_price: "250", hsn: "9025", unit: "PCS", gst_rate: "18" }],
     },

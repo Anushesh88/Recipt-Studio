@@ -10,7 +10,11 @@ from typing import Any
 
 VARIABLE_REGEX = re.compile(r"\{\{\s*([a-z_]+(?:\.[a-z_]+)?)\s*\}\}")
 
-BUILTIN_VARIABLES = frozenset({
+# The business profile from Settings: {{business.phone}} and so on
+PROFILE_KEYS = ("phone", "email", "upi_id", "pan", "bank_details", "licence")
+PROFILE_VARIABLES = frozenset(f"business.{key}" for key in PROFILE_KEYS)
+
+BUILTIN_VARIABLES = PROFILE_VARIABLES | frozenset({
     "business.name", "business.address", "business.gstin",
     "customer.name", "customer.email", "customer.address", "customer.gstin",
     "receipt.number", "receipt.date", "receipt.payment_method", "receipt.currency",
@@ -21,7 +25,7 @@ CUSTOM_PREFIX = "custom."
 # Variables a receipt may leave blank, and ones the server fills in itself
 # (the number, and the business address / GSTIN from the account's Settings)
 OPTIONAL_VARIABLES = frozenset({"receipt.notes"})
-SERVER_PROVIDED_VARIABLES = frozenset({
+SERVER_PROVIDED_VARIABLES = PROFILE_VARIABLES | frozenset({
     "receipt.number", "business.address", "business.gstin", "receipt.reverse_charge",
 })
 
@@ -51,9 +55,21 @@ def extract_variables(elements: Iterable[Mapping[str, Any]]) -> list[str]:
     return list(dict.fromkeys(keys))
 
 
+def _blank_profile_line(line: str, values: Mapping[str, str]) -> bool:
+    # e.g. "Phone: {{business.phone}}" for a business without a phone number
+    keys = find_variables(line)
+    return any(k in PROFILE_VARIABLES for k in keys) and not any(values.get(k, "").strip() for k in keys)
+
+
 def resolve(text: str, values: Mapping[str, str]) -> str:
-    """Substitutes whitelisted placeholders; keys without a value become ''."""
-    return VARIABLE_REGEX.sub(lambda m: values.get(m.group(1), ""), text)
+    """Substitutes whitelisted placeholders; keys without a value become ''.
+
+    A line that uses a business profile detail and has nothing to show (every
+    variable on it is empty) is left out, so templates can list details a
+    business may not have.
+    """
+    lines = [line for line in text.split("\n") if not _blank_profile_line(line, values)]
+    return VARIABLE_REGEX.sub(lambda m: values.get(m.group(1), ""), "\n".join(lines))
 
 
 def missing_required(

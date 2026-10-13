@@ -7,6 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { useEditorStore } from "../../store/editorStore";
 import {
   BUILTIN_VARIABLES,
+  PROFILE_VARIABLES,
   CUSTOM_KEY_PATTERN,
   CUSTOM_PREFIX,
   extractVariables,
@@ -115,7 +116,12 @@ export const InsertVariableMenu: React.FC<{ onInsert: (key: string) => void }> =
         )}
         <Separator className="my-1" />
         <MenuHeading>Built-in</MenuHeading>
-        {BUILTIN_VARIABLES.filter((v) => !GST_VARIABLES.has(v.key)).map((v) => (
+        {BUILTIN_VARIABLES.filter((v) => !GST_VARIABLES.has(v.key) && !PROFILE_VARIABLES.has(v.key)).map((v) => (
+          <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
+        ))}
+        <Separator className="my-1" />
+        <MenuHeading>Business details (from Settings)</MenuHeading>
+        {BUILTIN_VARIABLES.filter((v) => PROFILE_VARIABLES.has(v.key)).map((v) => (
           <MenuItem key={v.key} varKey={v.key} label={v.label} onSelect={insert} />
         ))}
         <Separator className="my-1" />

@@ -1,7 +1,14 @@
 import uuid
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, EmailStr, StringConstraints
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    EmailStr,
+    StringConstraints,
+)
 
 from app.services import gst_service
 
@@ -32,6 +39,18 @@ InvoicingMode = Literal["receipts", "gst", "both"]
 ReceiptPrefix = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9 _\-/#.]{0,12}$")]
 BusinessName = Annotated[str, StringConstraints(strip_whitespace=True, max_length=120)]
 BusinessAddress = Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)]
+Phone = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^$|^\+?[0-9][0-9 \-]{5,19}$")]
+# name@bank, as UPI apps show it
+UpiId = Annotated[str, StringConstraints(strip_whitespace=True, pattern=r"^$|^[A-Za-z0-9.\-_]{2,256}@[A-Za-z]{2,64}$")]
+Pan = Annotated[
+    str,
+    BeforeValidator(lambda v: v.strip().upper() if isinstance(v, str) else v),
+    StringConstraints(pattern=r"^$|^[A-Z]{5}[0-9]{4}[A-Z]$"),
+]
+ProfileText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)]
+HexColor = Annotated[str, StringConstraints(pattern=r"^#[0-9A-Fa-f]{6}$")]
+# Font pairings a brand kit can pick (frontend lib/brand.ts BRAND_FONT_PAIRS)
+BrandFonts = Literal["inter", "poppins-inter", "montserrat-open-sans", "merriweather-lato", "roboto"]
 # GST invoice numbers are prefix + "26-27/0001" and may be at most 16 characters
 InvoicePrefix = Annotated[str, StringConstraints(pattern=gst_service.INVOICE_PREFIX_PATTERN.pattern)]
 
@@ -78,6 +97,15 @@ class UserResponse(BaseModel):
     gstin: str | None = None
     invoice_prefix: str
     invoicing_mode: InvoicingMode | None = None  # None until the welcome question is answered
+    business_phone: str | None = None
+    business_email: str | None = None
+    upi_id: str | None = None
+    pan: str | None = None
+    bank_details: str | None = None
+    licence: str | None = None
+    brand_logo_asset_id: uuid.UUID | None = None
+    brand_color: str | None = None
+    brand_fonts: BrandFonts | None = None
     # How the account signs in
     has_password: bool
     google_linked: bool
@@ -98,3 +126,13 @@ class AccountUpdate(BaseModel):
     gstin: Gstin | Literal[""] | None = None
     invoice_prefix: InvoicePrefix | None = None
     invoicing_mode: InvoicingMode | None = None
+    # Business profile and brand kit; "" (or null for the logo) clears them
+    business_phone: Phone | None = None
+    business_email: EmailStr | Literal[""] | None = None
+    upi_id: UpiId | None = None
+    pan: Pan | None = None
+    bank_details: ProfileText | None = None
+    licence: ProfileText | None = None
+    brand_logo_asset_id: uuid.UUID | None = None
+    brand_color: HexColor | Literal[""] | None = None
+    brand_fonts: BrandFonts | Literal[""] | None = None

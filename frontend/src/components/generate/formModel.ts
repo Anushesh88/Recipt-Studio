@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { Canvas } from "../../schema/templateSchema";
 import type { Account } from "../../api/account";
+import { profileValues } from "../../lib/profile";
 import type { LineItemInput, ReceiptDataInput, ReceiptRecord } from "../../api/receipts";
 import {
   CUSTOM_PREFIX,
@@ -159,6 +160,7 @@ function formVariableValues(values: GenerateValues, receiptNumber: string, gst: 
     "business.name": (gst ? account?.business_name : values.business?.name) ?? "",
     "business.address": account?.business_address ?? "",
     "business.gstin": account?.gstin ?? "",
+    ...profileValues(account ?? undefined),
     "customer.name": customer.name ?? "",
     "customer.email": customer.email ?? "",
     "customer.address": customer.address ?? "",
@@ -476,6 +478,10 @@ export function previewFromReceipt(receipt: ReceiptRecord): PreviewData {
       "business.name": data.business.name ?? "",
       "business.address": data.business.address ?? "",
       "business.gstin": data.business.gstin ?? "",
+      ...profileValues({
+        business_phone: data.business.phone, business_email: data.business.email, upi_id: data.business.upi_id,
+        pan: data.business.pan, bank_details: data.business.bank_details, licence: data.business.licence,
+      }),
       "customer.name": data.customer.name ?? "",
       "customer.email": data.customer.email ?? "",
       "customer.address": data.customer.address ?? "",

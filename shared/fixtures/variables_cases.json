@@ -2,6 +2,11 @@
   "_comment": "Variable placeholder cases. Run by frontend/tests/sharedFixtures.test.ts (lib/variables.ts) and backend/tests/test_shared_fixtures.py (variables_service).",
   "find": [
     {
+      "text": "{{business.phone}} {{business.email}} {{business.upi_id}} {{business.pan}} {{business.bank_details}} {{business.licence}}",
+      "variables": ["business.phone", "business.email", "business.upi_id", "business.pan", "business.bank_details", "business.licence"],
+      "unknown": []
+    },
+    {
       "text": "GSTIN {{business.gstin}} bills {{customer.gstin}} at {{ receipt.place_of_supply }} (RCM {{receipt.reverse_charge}}) from {{business.address}} to {{customer.address}}",
       "variables": ["business.gstin", "customer.gstin", "receipt.place_of_supply", "receipt.reverse_charge", "business.address", "customer.address"],
       "unknown": []
@@ -50,6 +55,11 @@
     }
   ],
   "resolve": [
+    {
+      "text": "Phone: {{business.phone}}\nEmail: {{business.email}}\nDear {{customer.name}}\n{{business.email}} {{business.phone}}",
+      "values": { "business.phone": "98765 43210", "business.email": "", "customer.name": "" },
+      "resolved": "Phone: 98765 43210\nDear \n 98765 43210"
+    },
     {
       "text": "Hello {{customer.name}}!",
       "values": { "customer.name": "Jane" },

@@ -65,7 +65,12 @@ export interface ReceiptRecord {
   currency: string;
   created_at: string | null;
   data: Omit<ReceiptDataInput, 'business'> & {
-    business: { name: string | null; address?: string | null; gstin?: string | null };
+    business: {
+      name: string | null; address?: string | null; gstin?: string | null;
+      // the business profile when the receipt was made
+      phone?: string | null; email?: string | null; upi_id?: string | null; pan?: string | null;
+      bank_details?: string | null; licence?: string | null;
+    };
     items: StoredLineItem[];
     computed: ComputedTotals;
   };

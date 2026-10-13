@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, Integer, Text, func, text
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, Text, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -36,6 +36,24 @@ class User(Base):
     # What the user mostly makes, asked once after sign-up (None = not asked yet):
     # "receipts", "gst" or "both". Shapes defaults only; nothing is locked
     invoicing_mode: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Business profile: printed by templates through {{business.phone}} and the
+    # like (lines whose profile details are empty are left out)
+    business_phone: Mapped[str | None] = mapped_column(Text, nullable=True)
+    business_email: Mapped[str | None] = mapped_column(Text, nullable=True)
+    upi_id: Mapped[str | None] = mapped_column(Text, nullable=True)
+    pan: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bank_details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    licence: Mapped[str | None] = mapped_column(Text, nullable=True)  # e.g. "FSSAI 11521999000123"
+    # Brand kit: the logo that templates' logo boxes show, a colour (#RRGGBB) and
+    # a font pairing (BRAND_FONTS) that templates take on
+    brand_logo_asset_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        # assets also point at users: created after both tables
+        ForeignKey("assets.id", ondelete="SET NULL", use_alter=True, name="users_brand_logo_asset_id_fkey"),
+        nullable=True,
+    )
+    brand_color: Mapped[str | None] = mapped_column(Text, nullable=True)
+    brand_fonts: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

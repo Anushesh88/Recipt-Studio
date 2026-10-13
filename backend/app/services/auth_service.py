@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import create_access_token, get_password_hash, verify_password
+from app.models.asset import Asset
 from app.models.user import User
 from app.schemas.auth import AccountUpdate
 from app.services.google_auth_service import GoogleIdentity
@@ -79,6 +80,16 @@ async def user_from_token(db: AsyncSession, token: str) -> User | None:
     return await get_user_by_email(db, email) if isinstance(email, str) else None
 
 
+# Business profile and brand kit fields, cleared by ""
+CLEARABLE_FIELDS = (
+    "business_phone", "business_email", "upi_id", "pan", "bank_details", "licence", "brand_color", "brand_fonts",
+)
+
+
+class AssetNotFoundError(Exception):
+    """The brand logo isn't one of the account's uploads."""
+
+
 async def update_account(db: AsyncSession, user: User, changes: AccountUpdate) -> User:
     sent = changes.model_fields_set
     if "business_name" in sent:
@@ -95,6 +106,16 @@ async def update_account(db: AsyncSession, user: User, changes: AccountUpdate) -
         user.invoice_prefix = changes.invoice_prefix
     if "invoicing_mode" in sent and changes.invoicing_mode is not None:
         user.invoicing_mode = changes.invoicing_mode
+    for field in CLEARABLE_FIELDS:
+        if field in sent:
+            setattr(user, field, getattr(changes, field) or None)
+    if "brand_logo_asset_id" in sent:
+        logo = changes.brand_logo_asset_id
+        if logo is not None:
+            asset = await db.get(Asset, logo)
+            if asset is None or asset.user_id != user.id:
+                raise AssetNotFoundError()
+        user.brand_logo_asset_id = logo
     await db.commit()
     await db.refresh(user)
     return user

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { accountKeys, updateAccount, useAccount, type Account } from "../api/account";
+import type { ProfileField } from "../lib/profile";
 import { receiptKeys, useNextNumber } from "../api/receipts";
 import { catalogKeys, forgetCustomer, forgetItem, useSavedCustomers, useSavedItems } from "../api/catalog";
 import { apiErrorMessage } from "../api/client";
@@ -17,6 +18,11 @@ import { BUSINESS_NAME_MAX_LENGTH, RECEIPT_PREFIX_MAX_LENGTH, RECEIPT_PREFIX_PAT
 import { GSTIN_LENGTH, INVOICE_PREFIX_MAX_LENGTH, INVOICE_PREFIX_PATTERN, gstinProblem, stateLabel } from "../lib/gst";
 import { ADDRESS_MAX_LENGTH } from "../components/generate/formModel";
 import { INVOICING_OPTIONS } from "../api/account";
+
+const PHONE_PATTERN = /^$|^\+?[0-9][0-9 -]{5,19}$/;
+const UPI_PATTERN = /^$|^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$/;
+const PAN_PATTERN = /^$|^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const PROFILE_TEXT_MAX_LENGTH = 300;
 
 const schema = z.object({
   business_name: z.string().trim().max(BUSINESS_NAME_MAX_LENGTH, `Use at most ${BUSINESS_NAME_MAX_LENGTH} characters`),
@@ -36,6 +42,35 @@ const schema = z.object({
     .string()
     .max(INVOICE_PREFIX_MAX_LENGTH, `Use at most ${INVOICE_PREFIX_MAX_LENGTH} characters`)
     .regex(INVOICE_PREFIX_PATTERN, "Use letters, digits, - and / only"),
+  // Business profile (backend schemas/auth.py); blank leaves the line off receipts
+  business_phone: z.string().trim().regex(PHONE_PATTERN, "Use digits, spaces and - (a leading + is fine)"),
+  business_email: z.union([z.literal(""), z.string().trim().pipe(z.email("Enter a valid email address"))]),
+  upi_id: z.string().trim().regex(UPI_PATTERN, "A UPI ID looks like yourname@okhdfc"),
+  pan: z.string().trim().toUpperCase().regex(PAN_PATTERN, "A PAN is 5 letters, 4 digits and a letter, e.g. AAPFU0939F"),
+  bank_details: z.string().trim().max(PROFILE_TEXT_MAX_LENGTH, `Use at most ${PROFILE_TEXT_MAX_LENGTH} characters`),
+  licence: z.string().trim().max(PROFILE_TEXT_MAX_LENGTH, `Use at most ${PROFILE_TEXT_MAX_LENGTH} characters`),
+});
+
+
+// The business profile fields, in the order Settings shows them
+const PROFILE_INPUTS: { field: ProfileField; label: string; hint: string; placeholder?: string; multiline?: boolean; inputMode?: "tel" | "email" }[] = [
+  { field: "business_phone", label: "Phone", hint: "", placeholder: "+91 98765 43210", inputMode: "tel" },
+  { field: "business_email", label: "Email", hint: "", placeholder: "hello@yourshop.in", inputMode: "email" },
+  { field: "upi_id", label: "UPI ID", hint: "For a \"Pay by UPI\" line or QR code.", placeholder: "yourshop@okhdfc" },
+  { field: "pan", label: "PAN", hint: "", placeholder: "AAPFU0939F" },
+  { field: "bank_details", label: "Bank details", hint: "For bank transfers, e.g. bank, account number and IFSC.", multiline: true },
+  { field: "licence", label: "Licence numbers", hint: "Printed as you type it, e.g. \"FSSAI 11521999000123\" or \"D.L. no: 20B-1234 / 21B-1234\".", multiline: true },
+];
+
+const formValues = (account: Account): SettingsValues => ({
+  business_name: account.business_name ?? "",
+  receipt_prefix: account.receipt_prefix,
+  numbering_mode: account.numbering_mode,
+  invoicing_mode: account.invoicing_mode ?? "both",
+  business_address: account.business_address ?? "",
+  gstin: account.gstin ?? "",
+  invoice_prefix: account.invoice_prefix,
+  ...(Object.fromEntries(PROFILE_INPUTS.map(({ field }) => [field, account[field] ?? ""])) as Record<ProfileField, string>),
 });
 type SettingsValues = z.infer<typeof schema>;
 
@@ -51,15 +86,7 @@ const SettingsForm: React.FC<{ account: Account }> = ({ account }) => {
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const form = useForm<SettingsValues>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      business_name: account.business_name ?? "",
-      receipt_prefix: account.receipt_prefix,
-      numbering_mode: account.numbering_mode,
-      invoicing_mode: account.invoicing_mode ?? "both",
-      business_address: account.business_address ?? "",
-      gstin: account.gstin ?? "",
-      invoice_prefix: account.invoice_prefix,
-    },
+    defaultValues: formValues(account),
   });
   const { register, handleSubmit, formState, control, reset } = form;
   const [prefix, mode, invoicePrefix, gstin] = useWatch({ control, name: ["receipt_prefix", "numbering_mode", "invoice_prefix", "gstin"] });
@@ -77,15 +104,7 @@ const SettingsForm: React.FC<{ account: Account }> = ({ account }) => {
       const saved = await updateAccount(values);
       queryClient.setQueryData(accountKeys.me, saved);
       await queryClient.invalidateQueries({ queryKey: receiptKeys.nextNumber });
-      reset({
-        business_name: saved.business_name ?? "",
-        receipt_prefix: saved.receipt_prefix,
-        numbering_mode: saved.numbering_mode,
-        invoicing_mode: saved.invoicing_mode ?? "both",
-        business_address: saved.business_address ?? "",
-        gstin: saved.gstin ?? "",
-        invoice_prefix: saved.invoice_prefix,
-      });
+      reset(formValues(saved));
       setStatus({ ok: true, message: "Settings saved." });
     } catch (e) {
       setStatus({ ok: false, message: apiErrorMessage(e, "Couldn't save your settings.") });
@@ -143,6 +162,39 @@ const SettingsForm: React.FC<{ account: Account }> = ({ account }) => {
           </p>
         )}
       </div>
+
+      <fieldset className="space-y-4 rounded-md border border-border p-4" data-business-profile="">
+        <legend className="px-1 text-sm font-medium">Business details</legend>
+        <p className="text-xs text-muted-foreground">
+          Templates print these for you. Leave any blank: lines that need it are left off your receipts.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {PROFILE_INPUTS.map(({ field, label, hint, placeholder, multiline, inputMode }) => {
+            const id = `profile-${field}`;
+            const problem = formState.errors[field]?.message;
+            return (
+              <div key={field} className={`space-y-1.5 ${multiline ? "sm:col-span-2" : ""}`}>
+                <Label htmlFor={id}>{label}</Label>
+                {multiline ? (
+                  <Textarea id={id} rows={2} maxLength={PROFILE_TEXT_MAX_LENGTH} placeholder={placeholder} aria-invalid={Boolean(problem)} {...register(field)} />
+                ) : (
+                  <Input
+                    id={id}
+                    inputMode={inputMode}
+                    type={inputMode === "tel" ? "tel" : "text"}
+                    autoComplete="off"
+                    placeholder={placeholder}
+                    className={field === "pan" ? "uppercase" : undefined}
+                    aria-invalid={Boolean(problem)}
+                    {...register(field)}
+                  />
+                )}
+                {problem ? <p className="text-xs text-destructive">{problem}</p> : hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+              </div>
+            );
+          })}
+        </div>
+      </fieldset>
 
       <fieldset className="space-y-4 rounded-md border border-border p-4">
         <legend className="px-1 text-sm font-medium">GST tax invoices</legend>

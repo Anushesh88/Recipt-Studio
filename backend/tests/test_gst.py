@@ -118,7 +118,8 @@ async def test_intra_state_invoice_cgst_sgst_and_numbering(client: AsyncClient, 
     assert body["receipt_number"] == "INV/26-27/0001"
     assert body["currency"] == "INR"
     # The supplier's details come from Settings, whatever the form sent
-    assert body["data"]["business"] == {"name": "Sharma Traders", "address": "12 MG Road, Pune", "gstin": SUPPLIER_GSTIN}
+    business = body["data"]["business"]
+    assert {k: business[k] for k in ("name", "address", "gstin")} == {"name": "Sharma Traders", "address": "12 MG Road, Pune", "gstin": SUPPLIER_GSTIN}
     # A walk-in sale: the place of supply defaults to the supplier's state
     assert body["data"]["receipt"]["place_of_supply"] == "27"
     assert body["data"]["computed"] == {

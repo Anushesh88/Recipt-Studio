@@ -50,6 +50,14 @@ class BusinessData(BaseModel):
     # Copied from the account's Settings when the receipt is created
     address: Address | None = None
     gstin: Gstin | None = None
+    # The business profile, also copied from Settings (so a receipt keeps the
+    # details it was issued with)
+    phone: ShortText | None = None
+    email: ShortText | None = None
+    upi_id: ShortText | None = None
+    pan: ShortText | None = None
+    bank_details: Address | None = None
+    licence: Address | None = None
 
 
 class CustomerData(BaseModel):

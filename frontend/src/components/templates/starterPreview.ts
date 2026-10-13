@@ -1,6 +1,7 @@
 // A starter template filled with its made-up sample business, for the gallery
 // thumbnails: the same form model and preview maths as the Generate page.
 import type { Account } from "../../api/account";
+import { NO_PROFILE } from "../../lib/profile";
 import type { StarterTemplate } from "../../lib/starterTemplates";
 import { buildFormModel, emptyLineItem, previewFromForm, type FormModel, type GenerateValues, type PreviewData } from "../generate/formModel";
 
@@ -20,10 +21,14 @@ export function starterValues({ canvas, sample }: StarterTemplate): { model: For
   values.items = sample.items.map((item) => ({ ...emptyLineItem(), ...item }));
   values.tax_percent = sample.tax_percent ?? values.tax_percent;
   values.discount = sample.discount ?? values.discount;
+  const { name, address, gstin, phone, email, upi_id, pan, bank_details, licence } = sample.business;
   const account: Account = {
+    ...NO_PROFILE,
+    business_phone: phone ?? null, business_email: email ?? null, upi_id: upi_id ?? null, pan: pan ?? null,
+    bank_details: bank_details ?? null, licence: licence ?? null,
     id: "sample", email: "", receipt_prefix: "R-", numbering_mode: "sequential", invoice_prefix: "INV/", invoicing_mode: "both",
     has_password: true, google_linked: false, is_admin: false,
-    business_name: sample.business.name, business_address: sample.business.address, gstin: sample.business.gstin ?? null,
+    business_name: name, business_address: address, gstin: gstin ?? null,
   };
   return { model, values, account };
 }

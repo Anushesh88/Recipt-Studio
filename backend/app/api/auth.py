@@ -105,8 +105,11 @@ async def update_account(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> User:
-    """Business name and receipt numbering (prefix, sequential or random IDs)."""
-    return await auth_service.update_account(db, current_user, changes)
+    """Business name and profile, receipt numbering and the brand kit."""
+    try:
+        return await auth_service.update_account(db, current_user, changes)
+    except auth_service.AssetNotFoundError:
+        raise HTTPException(status_code=422, detail="That logo isn't one of your uploads.") from None
 
 
 FORGOT_MESSAGE = "If an account uses that email, we've sent it a link to set a new password."

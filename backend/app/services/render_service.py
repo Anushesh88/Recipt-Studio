@@ -233,7 +233,9 @@ def element_model(
             line_height=css_number(props["lineHeight"]),
         )
     elif kind == "image":
-        model.update(src=assets.get(props.get("assetId") or ""), fit=props["fit"])
+        # A logo box without its own image shows the brand kit's logo
+        key = props.get("assetId") or (BRAND_LOGO if props.get("source") == "logo" else "")
+        model.update(src=assets.get(key), fit=props["fit"])
     elif kind == "items_table":
         model.update(_table_model(element, content.rows))
     elif kind == "totals":
@@ -279,12 +281,30 @@ def build_html(
     return html, layout
 
 
+# The assets key for the brand kit's logo
+BRAND_LOGO = "brand-logo"
+
+
+def _asset_ref(element: Mapping[str, Any], user: User) -> tuple[str, str] | None:
+    """(key in the sources, asset id) of the image an element shows, if any."""
+    if element["type"] not in ("image", "signature"):
+        return None
+    props = element.get("props", {})
+    if props.get("assetId"):
+        return props["assetId"], props["assetId"]
+    if element["type"] == "image" and props.get("source") == "logo" and user.brand_logo_asset_id:
+        return BRAND_LOGO, str(user.brand_logo_asset_id)
+    return None
+
+
 async def asset_sources(db: AsyncSession, user: User, canvas: Mapping[str, Any]) -> dict[str, str]:
-    """assetId -> data: URI for the user's own images used by the canvas."""
+    """assetId -> data: URI for the user's own images used by the canvas (and
+    BRAND_LOGO for logo boxes left to the brand kit)."""
     sources: dict[str, str] = {}
     for element in canvas["elements"]:
-        asset_id = element.get("props", {}).get("assetId") if element["type"] in ("image", "signature") else None
-        if not asset_id or asset_id in sources:
+        ref = _asset_ref(element, user)
+        key, asset_id = ref if ref else ("", None)
+        if not asset_id or key in sources:
             continue
         try:
             asset = await asset_service.get_user_asset(db, user, uuid.UUID(asset_id))
@@ -293,7 +313,7 @@ async def asset_sources(db: AsyncSession, user: User, canvas: Mapping[str, Any])
         content = await asset_service.asset_bytes(db, asset) if asset else None
         if asset and content is not None:
             encoded = base64.b64encode(content).decode("ascii")
-            sources[asset_id] = f"data:{asset.mime_type};base64,{encoded}"
+            sources[key] = f"data:{asset.mime_type};base64,{encoded}"
     return sources
 
 
