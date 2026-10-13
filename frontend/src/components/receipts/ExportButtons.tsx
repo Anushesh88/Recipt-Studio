@@ -6,13 +6,16 @@ import type { ReceiptSummary } from "../../api/receipts";
 import { WhatsAppButton } from "./WhatsAppButton";
 
 // Download buttons for one stored receipt (rendered server-side)
-// `receipt` (when given) adds the WhatsApp button
-export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string; size?: "xs" | "sm"; receipt?: ReceiptSummary }> = ({
-  receiptId,
-  receiptNumber,
-  size = "sm",
-  receipt,
-}) => {
+// `receipt` (when given) adds the WhatsApp button; `layout="card"` puts PDF
+// full width with the rest in two even columns (`children` join them)
+export const ExportButtons: React.FC<{
+  receiptId: string;
+  receiptNumber: string;
+  size?: "xs" | "sm";
+  receipt?: ReceiptSummary;
+  layout?: "row" | "card";
+  children?: React.ReactNode;
+}> = ({ receiptId, receiptNumber, size = "sm", receipt, layout = "row", children }) => {
   const [busy, setBusy] = useState<ExportFormat | "share" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [shareable] = useState(canShareFiles);
@@ -32,8 +35,8 @@ export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string;
 
   return (
     <div className="space-y-1">
-      <div className="flex flex-wrap gap-2">
-        <Button type="button" size={size} disabled={busy !== null} onClick={() => download("pdf")} aria-label={`Download ${receiptNumber} as PDF`}>
+      <div className={layout === "card" ? "grid grid-cols-2 gap-2 *:w-full [&>*>button]:w-full [&>*:last-child:nth-child(even)]:col-span-2" : "flex flex-wrap gap-2"}>
+        <Button type="button" size={size} className={layout === "card" ? "col-span-2" : undefined} disabled={busy !== null} onClick={() => download("pdf")} aria-label={`Download ${receiptNumber} as PDF`}>
           <FileDown />
           {busy === "pdf" ? "Preparing…" : "PDF"}
         </Button>
@@ -48,6 +51,7 @@ export const ExportButtons: React.FC<{ receiptId: string; receiptNumber: string;
           </Button>
         )}
         {receipt && <WhatsAppButton receipt={receipt} size={size} />}
+        {children}
       </div>
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
     </div>

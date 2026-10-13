@@ -52,13 +52,14 @@ export const History: React.FC = () => {
                 </div>
                 <p className="shrink-0 font-semibold tabular-nums">{r.currency} {r.total_amount}</p>
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <ExportButtons receiptId={r.id} receiptNumber={r.receipt_number} size="xs" receipt={r} />
-                {r.template_id && (
-                  <Button asChild size="xs" variant="ghost">
-                    <Link to={`/generate/${r.template_id}?from=${r.id}`} aria-label={`Use ${r.receipt_number} again`}><Repeat />Use again</Link>
-                  </Button>
-                )}
+              <div className="mt-3">
+                <ExportButtons receiptId={r.id} receiptNumber={r.receipt_number} size="sm" receipt={r} layout="card">
+                  {r.template_id && (
+                    <Button asChild size="sm" variant="outline">
+                      <Link to={`/generate/${r.template_id}?from=${r.id}`} aria-label={`Use ${r.receipt_number} again`}><Repeat />Use again</Link>
+                    </Button>
+                  )}
+                </ExportButtons>
               </div>
             </li>
           ))}
