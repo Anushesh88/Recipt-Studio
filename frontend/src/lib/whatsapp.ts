@@ -26,7 +26,8 @@ export function receiptMessage(details: {
   return [
     greeting,
     `Here is your ${details.kind} ${details.number}${from} for ${currencyPrefix(details.currency)}${details.total}.`,
-    `View or download it: ${details.link}`,
+    // Sent with the file itself, the message has no link
+    ...(details.link ? [`View or download it: ${details.link}`] : []),
     "Thank you!",
   ].join("\n");
 }

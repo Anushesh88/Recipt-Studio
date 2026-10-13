@@ -21,3 +21,10 @@ describe("WhatsApp links", () => {
       .toBe("Hello,\nHere is your invoice INV/26-27/0001 for $10.00.\nView or download it: L\nThank you!");
   });
 });
+
+describe("a message sent with the file", () => {
+  it("has no link line", () => {
+    expect(receiptMessage({ customerName: null, businessName: "Cafe", kind: "receipt", number: "R-0002", total: "50.00", currency: "INR", link: null }))
+      .toBe("Hello,\nHere is your receipt R-0002 from Cafe for ₹50.00.\nThank you!");
+  });
+});

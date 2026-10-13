@@ -65,7 +65,7 @@ test('WhatsApp sends a PDF, a PNG or a link', async ({ page }) => {
   expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
   let url = await opened();
   expect(`${url.origin}${url.pathname}`).toBe('https://wa.me/919876543210');
-  expect(url.searchParams.get('text')).not.toContain('http');
+  expect(url.searchParams.get('text')).not.toMatch(/http|null|View or download/);
 
   // PNG: the same, with the image
   await page.getByRole('button', { name: 'Send R-0003 on WhatsApp' }).click();

@@ -119,5 +119,5 @@ test('WhatsApp on a phone sends the PDF file, not a link', async ({ page }) => {
   const shared = await page.evaluate(() => (window as unknown as { __shared: { names: string[]; text: string } }).__shared);
   expect(shared.names).toEqual(['application/pdf']);
   expect(shared.text).toContain('R-0001');
-  expect(shared.text).not.toContain('http');
+  expect(shared.text).not.toMatch(/http|null|View or download/);
 });
