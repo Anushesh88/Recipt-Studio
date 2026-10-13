@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -88,7 +88,9 @@ function CredentialsForm({ isRegister }: { isRegister: boolean }) {
 }
 
 export default function Login() {
-  const [isRegister, setIsRegister] = useState(false);
+  // /login?mode=signup (the landing page's "Start free") opens on sign-up
+  const [params] = useSearchParams();
+  const [isRegister, setIsRegister] = useState(params.get('mode') === 'signup');
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-indigo-50 to-gray-100 p-4">

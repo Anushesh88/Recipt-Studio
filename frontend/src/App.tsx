@@ -14,6 +14,7 @@ import { PrivacyPolicy, TermsOfService } from './pages/Legal';
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset';
 import { AdminFeedback } from './pages/AdminFeedback';
 import { FeedbackButton } from './components/FeedbackButton';
+import { Landing } from './pages/Landing';
 
 function App() {
   const token = useAuthStore((state) => state.token);
@@ -23,6 +24,8 @@ function App() {
     <BrowserRouter>
       <WakingUpNotice />
       <Routes>
+        {/* What Receipt Studio is, for visitors; signed in, straight to work */}
+        <Route path="/" element={token ? <Navigate to="/templates" /> : <Landing />} />
         <Route path="/login" element={token ? <Navigate to="/templates" /> : <Login />} />
         {/* Public, signed in or not */}
         <Route path="/privacy" element={<PrivacyPolicy />} />
@@ -39,7 +42,7 @@ function App() {
         <Route path="/welcome" element={requireAuth(<Welcome />)} />
         <Route path="/reports" element={requireAuth(<Reports />)} />
         <Route path="/admin/feedback" element={requireAuth(<AdminFeedback />)} />
-        <Route path="*" element={<Navigate to="/templates" />} />
+        <Route path="*" element={<Navigate to={token ? "/templates" : "/"} />} />
       </Routes>
       {token && <FeedbackButton />}
     </BrowserRouter>

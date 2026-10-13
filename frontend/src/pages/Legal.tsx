@@ -6,7 +6,7 @@ import { Logo } from "../components/brand/Logo";
 // page and Google's sign-in screen. They describe what the app actually does;
 // keep them in step with it.
 
-const CONTACT_EMAIL = "anusheshjumale88@gmail.com";
+export const CONTACT_EMAIL = "anusheshjumale88@gmail.com";
 const EFFECTIVE = "11 October 2026";
 
 const Mail: React.FC = () => <a href={`mailto:${CONTACT_EMAIL}`} className="text-indigo-700 underline">{CONTACT_EMAIL}</a>;
