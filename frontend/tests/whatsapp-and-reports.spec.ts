@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { STARTER_TEMPLATES } from '../src/lib/starterTemplates';
 
-// Send on WhatsApp (a message with a private PDF link) and the sales report
+// Send on WhatsApp (as a PDF, a PNG or a private link) and the sales report
 
 const API = 'http://localhost:8000';
 const APP = 'http://localhost:5173';
@@ -37,22 +37,50 @@ async function shopWithSales(page: Page): Promise<string> {
   return token;
 }
 
-test('WhatsApp opens a chat with the customer and a link to the PDF', async ({ page }) => {
+test('WhatsApp sends a PDF, a PNG or a link', async ({ page }) => {
   await shopWithSales(page);
+  // Catch the WhatsApp tab instead of opening it
+  await page.addInitScript(() => {
+    const w = window as unknown as { __opened: string[] };
+    w.__opened = [];
+    window.open = (url?: string | URL) => { w.__opened.push(String(url)); return null; };
+  });
   await page.goto(`${APP}/history`);
   await page.getByRole('button', { name: 'Send R-0003 on WhatsApp' }).click();
   const popup = page.locator('[data-whatsapp]');
-  await expect(popup.getByLabel('Message')).toHaveValue(/^Hello Meera,\nHere is your receipt R-0003 from Brew & Bloom Café for ₹430\.50\./);
+  const opened = async () => {
+    const urls = await page.evaluate(() => (window as unknown as { __opened: string[] }).__opened);
+    return new URL(urls[urls.length - 1]);
+  };
 
+  // PDF (the default): downloads the file, opens the chat with no link
+  await expect(popup.getByRole('radio', { name: 'PDF' })).toHaveAttribute('aria-checked', 'true');
+  await expect(popup.getByLabel('Message')).toHaveValue(/^Hello Meera,\nHere is your receipt R-0003 from Brew & Bloom Café for ₹430\.50\./);
   await popup.getByLabel("Customer's WhatsApp number").fill('123');
   await expect(popup).toContainText('Enter a 10-digit mobile number');
-  await expect(popup.getByRole('link', { name: 'Open WhatsApp' })).toHaveCount(0);
+  await expect(popup.getByRole('button', { name: 'Open WhatsApp' })).toBeDisabled();
   await popup.getByLabel("Customer's WhatsApp number").fill('98765 43210');
-  const href = await popup.getByRole('link', { name: 'Open WhatsApp' }).getAttribute('href');
-  const url = new URL(href!);
+  const pdfDownload = page.waitForEvent('download');
+  await popup.getByRole('button', { name: 'Open WhatsApp' }).click();
+  expect((await pdfDownload).suggestedFilename()).toMatch(/\.pdf$/);
+  let url = await opened();
   expect(`${url.origin}${url.pathname}`).toBe('https://wa.me/919876543210');
+  expect(url.searchParams.get('text')).not.toContain('http');
 
-  // The link in the message opens the PDF for anyone, signed in or not
+  // PNG: the same, with the image
+  await page.getByRole('button', { name: 'Send R-0003 on WhatsApp' }).click();
+  await popup.getByRole('radio', { name: 'PNG' }).click();
+  await expect(popup.getByRole('button', { name: 'Open WhatsApp' })).toBeEnabled();
+  const pngDownload = page.waitForEvent('download');
+  await popup.getByRole('button', { name: 'Open WhatsApp' }).click();
+  expect((await pngDownload).suggestedFilename()).toMatch(/\.png$/);
+
+  // Link: the message carries a link that opens the PDF for anyone
+  await page.getByRole('button', { name: 'Send R-0003 on WhatsApp' }).click();
+  await popup.getByRole('radio', { name: 'Link' }).click();
+  await expect(popup.getByLabel('Message')).toHaveValue(/View or download it: /);
+  await popup.getByRole('button', { name: 'Open WhatsApp' }).click();
+  url = await opened();
   const link = /View or download it: (\S+)/.exec(url.searchParams.get('text')!)![1];
   expect(link).toMatch(new RegExp(`^${API}/public/receipts/`));
   const pdf = await page.request.get(link, { headers: {} });
