@@ -41,8 +41,22 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
 
   return (
     <article data-template-card={template.name} className="flex min-h-44 flex-col sm:h-64 rounded-lg border border-border bg-white p-4 shadow-sm">
-      <Link to={`/editor/${template.id}`} className="flex-1 space-y-1">
-        <h2 className="line-clamp-2 text-lg font-semibold hover:underline">{template.name}</h2>
+      <div className="flex items-start gap-2">
+        <h2 className="line-clamp-2 min-w-0 flex-1 text-lg font-semibold">
+          <Link to={`/editor/${template.id}`} className="hover:underline">{template.name}</Link>
+        </h2>
+        <Button
+          size="icon-sm"
+          variant="ghost"
+          className="-mt-1 -mr-2 shrink-0 text-muted-foreground hover:text-destructive"
+          disabled={busy || confirmingDelete}
+          aria-label={`Delete ${template.name}`}
+          onClick={() => setConfirmingDelete(true)}
+        >
+          <Trash2 />
+        </Button>
+      </div>
+      <Link to={`/editor/${template.id}`} tabIndex={-1} className="mt-1 flex-1 space-y-1">
         {template.document_type === 'gst_invoice' && (
           <span className="inline-block rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-800">GST tax invoice</span>
         )}
@@ -53,7 +67,7 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
         <p className="text-xs text-muted-foreground">Updated {formatUpdated(template.updated_at)}</p>
       </Link>
       {confirmingDelete ? (
-        <div className="flex items-center justify-between gap-2" role="group" aria-label="Confirm delete">
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-md bg-red-50 px-2 py-1.5" role="group" aria-label="Confirm delete">
           <span className="text-sm">Delete this template?</span>
           <div className="flex gap-1">
             <Button size="xs" variant="ghost" onClick={() => setConfirmingDelete(false)}>Cancel</Button>
@@ -63,17 +77,14 @@ function TemplateCard({ template, onError }: { template: TemplateSummary; onErro
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap gap-1">
-          <Button asChild size="xs">
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button asChild size="sm" className="col-span-2">
             <Link to={`/generate/${template.id}`}><ReceiptText />Generate</Link>
           </Button>
-          <Button asChild size="xs" variant="outline">
+          <Button asChild size="sm" variant="outline">
             <Link to={`/editor/${template.id}`}><Pencil />Edit</Link>
           </Button>
-          <Button size="xs" variant="outline" disabled={busy} onClick={duplicate}><Copy />Duplicate</Button>
-          <Button size="xs" variant="ghost" disabled={busy} aria-label={`Delete ${template.name}`} onClick={() => setConfirmingDelete(true)}>
-            <Trash2 />
-          </Button>
+          <Button size="sm" variant="outline" disabled={busy} onClick={duplicate}><Copy />Duplicate</Button>
         </div>
       )}
     </article>
