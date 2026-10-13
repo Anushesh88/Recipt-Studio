@@ -30,6 +30,9 @@ export const BUILTIN_VARIABLES: readonly BuiltinVariable[] = [
   { key: "customer.gstin", label: "Customer GSTIN", sample: "29AAGCB7383J1Z4" },
   { key: "receipt.place_of_supply", label: "Place of supply", sample: "Maharashtra (27)" },
   { key: "receipt.reverse_charge", label: "Reverse charge", sample: "No" },
+  // Worked out from the bill (backend variable_values)
+  { key: "receipt.total", label: "Bill total", sample: "37.80" },
+  { key: "receipt.upi_link", label: "Pay by UPI link (for a QR code)", sample: "upi://pay?pa=acmecafe@okhdfc&pn=Acme%20Cafe&am=37.80&cu=INR&tn=Receipt%20R-0001" },
   // The business profile, from Settings (backend variables_service.PROFILE_VARIABLES)
   { key: "business.phone", label: "Business phone", sample: "+91 98765 43210" },
   { key: "business.email", label: "Business email", sample: "hello@acmecafe.in" },

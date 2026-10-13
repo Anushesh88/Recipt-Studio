@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { Canvas } from "../../schema/templateSchema";
 import type { Account } from "../../api/account";
 import { profileValues } from "../../lib/profile";
+import { billValues } from "../../lib/upi";
 import type { LineItemInput, ReceiptDataInput, ReceiptRecord } from "../../api/receipts";
 import {
   CUSTOM_PREFIX,
@@ -466,14 +467,14 @@ export function previewFromForm(
 ): PreviewData {
   const number = values.receipt?.number?.trim() || nextNumber || "";
   const content = gst ? gstPreview(values, account) : { ...receiptPreview(values), taxRows: undefined };
-  return { values: formVariableValues(values, number, gst, account), ...content };
+  return { values: billValues(formVariableValues(values, number, gst, account), content.totals.total, gst), ...content };
 }
 
 // The stored receipt, as the server computed it
 export function previewFromReceipt(receipt: ReceiptRecord): PreviewData {
   const { data } = receipt;
   const gst = receipt.document_type === "gst_invoice";
-  return {
+  const preview = {
     values: {
       "business.name": data.business.name ?? "",
       "business.address": data.business.address ?? "",
@@ -499,4 +500,5 @@ export function previewFromReceipt(receipt: ReceiptRecord): PreviewData {
     totals: totalsValues(data.computed),
     taxRows: gst ? taxRows(data.computed.gst) : undefined,
   };
+  return { ...preview, values: billValues(preview.values, data.computed.total, gst) };
 }

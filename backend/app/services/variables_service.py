@@ -19,6 +19,8 @@ BUILTIN_VARIABLES = PROFILE_VARIABLES | frozenset({
     "customer.name", "customer.email", "customer.address", "customer.gstin",
     "receipt.number", "receipt.date", "receipt.payment_method", "receipt.currency",
     "receipt.notes", "receipt.place_of_supply", "receipt.reverse_charge",
+    # Worked out from the bill: its total, and a "Pay by UPI" link for a QR code
+    "receipt.total", "receipt.upi_link",
 })
 CUSTOM_PREFIX = "custom."
 
@@ -27,6 +29,7 @@ CUSTOM_PREFIX = "custom."
 OPTIONAL_VARIABLES = frozenset({"receipt.notes"})
 SERVER_PROVIDED_VARIABLES = PROFILE_VARIABLES | frozenset({
     "receipt.number", "business.address", "business.gstin", "receipt.reverse_charge",
+    "receipt.total", "receipt.upi_link",
 })
 
 CONTENT_ELEMENT_TYPES = frozenset({"text", "qr"})

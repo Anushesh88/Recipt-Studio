@@ -6,6 +6,7 @@ name, address and GSTIN from the account and is numbered in the
 per-financial-year invoice series.
 """
 import datetime as dt
+import urllib.parse
 import uuid
 from dataclasses import dataclass
 from decimal import Decimal
@@ -74,11 +75,30 @@ class ReceiptRuleError(Exception):
         self.fields = fields
 
 
+def upi_link(upi_id: str | None, payee: str | None, total: Decimal | None, currency: str, note: str) -> str:
+    """A "Pay by UPI" link (NPCI's upi://pay) for a QR code: any UPI app opens
+    it with the payee, the amount and a note filled in. Empty without a UPI ID;
+    the amount only in rupees. Mirrored by upiLink() in frontend lib/upi.ts."""
+    if not upi_id:
+        return ""
+    def encode(value: str) -> str:
+        # The same characters as JavaScript's encodeURIComponent, but keeping "@"
+        return urllib.parse.quote(value, safe="@!'()*~")
+    params = [("pa", upi_id), ("pn", payee or "")]
+    if total is not None and total > 0 and currency.upper() == "INR":
+        params.append(("am", f"{total:.2f}"))
+    params += [("cu", "INR"), ("tn", note)]
+    return "upi://pay?" + "&".join(f"{key}={encode(value)}" for key, value in params if value)
+
+
 def variable_values(
-    data: ReceiptDataIn, receipt_number: str | None, document_type: DocumentType = "receipt"
+    data: ReceiptDataIn, receipt_number: str | None, document_type: DocumentType = "receipt",
+    total: Decimal | None = None,
 ) -> dict[str, str]:
-    """Flat {variable key: value} map for the variables a template can use."""
+    """Flat {variable key: value} map for the variables a template can use.
+    `total` is the computed bill total (receipt.total and the UPI link's amount)."""
     gst = document_type == "gst_invoice"
+    kind = "Invoice" if gst else "Receipt"
     values = {
         "business.name": data.business.name or "",
         "business.address": data.business.address or "",
@@ -96,6 +116,11 @@ def variable_values(
         "receipt.notes": data.receipt.notes or "",
         "receipt.place_of_supply": gst_service.state_label(data.receipt.place_of_supply or ""),
         "receipt.reverse_charge": "Yes" if data.receipt.reverse_charge else "No",
+        "receipt.total": f"{total:.2f}" if total is not None else "",
+        "receipt.upi_link": upi_link(
+            data.business.upi_id, data.business.name, total, data.receipt.currency,
+            f"{kind} {receipt_number}" if receipt_number else kind,
+        ),
     }
     values.update({f"{variables_service.CUSTOM_PREFIX}{key}": value for key, value in data.custom.items()})
     return values
@@ -254,7 +279,7 @@ async def create_receipt(db: AsyncSession, user: User, payload: ReceiptCreate) -
     # Every variable the template uses needs a value (Architecture rule 9)
     used = variables_service.extract_variables(elements)
     optional = GST_OPTIONAL_VARIABLES if document_type == "gst_invoice" else variables_service.OPTIONAL_VARIABLES
-    missing = variables_service.missing_required(used, variable_values(data, None, document_type), optional)
+    missing = variables_service.missing_required(used, variable_values(data, None, document_type, prepared.computed.total), optional)
     if missing:
         raise MissingVariablesError(missing)
 
@@ -272,7 +297,7 @@ async def create_receipt(db: AsyncSession, user: User, payload: ReceiptCreate) -
 
     # QR codes hold limited text, so they're checked with the final number filled in
     try:
-        qr_service.check_codes(elements, variable_values(data, number, document_type))
+        qr_service.check_codes(elements, variable_values(data, number, document_type, prepared.computed.total))
     except qr_service.QrContentTooLongError:
         await db.rollback()  # hands the sequence number back
         raise

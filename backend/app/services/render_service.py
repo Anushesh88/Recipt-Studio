@@ -241,7 +241,9 @@ def element_model(
     elif kind == "totals":
         model.update(_totals_model(element, content.totals, content.tax_rows))
     elif kind == "qr":
-        model.update(svg=_qr_svg(variables_service.resolve(props["content"], content.values), props["errorCorrection"]))
+        encoded = variables_service.resolve(props["content"], content.values)
+        # Nothing to encode (say, a UPI QR without a UPI ID in Settings): no code
+        model.update(svg=_qr_svg(encoded, props["errorCorrection"]) if encoded.strip() else Markup(""))
     elif kind == "signature":
         model.update(_signature_model(element, height, assets.get(props.get("assetId") or "")))
     elif kind == "divider":

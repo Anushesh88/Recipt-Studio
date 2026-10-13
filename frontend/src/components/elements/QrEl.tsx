@@ -13,7 +13,7 @@ export const QrEl = React.forwardRef<HTMLDivElement, ElementProps<"qr"> & { valu
     const level = element.props.errorCorrection;
     return (
       <BaseElementWrapper element={element} ref={ref} {...domProps}>
-        {qrFits(encoded, level) ? (
+        {values && !encoded.trim() ? null /* nothing to encode (a UPI QR without a UPI ID): no code, as in the PDF */ : qrFits(encoded, level) ? (
           <div style={{ width: "100%", height: "100%" }}>
             <QRCodeSVG value={encoded || " "} level={level} width="100%" height="100%" />
           </div>

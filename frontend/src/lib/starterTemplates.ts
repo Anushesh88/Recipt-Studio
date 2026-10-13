@@ -162,7 +162,11 @@ const CAFE = design({ preset: "thermal80", font: "Poppins", color: "#1F2937" }, 
     .divider("rule-bottom", "dotted", GREY)
     .totals("totals", ["subtotal", "tax", "total"], { width: 180, fontSize: 12 })
     .gap(8)
-    .text("paid", "Paid by {{receipt.payment_method}}\nUPI: {{business.upi_id}}", { fontSize: 10, align: "center", color: GREY })
+    .text("paid", "Paid by {{receipt.payment_method}}", { fontSize: 10, align: "center", color: GREY })
+    .gap(4)
+    // Pay by UPI with the bill amount (left off until there's a UPI ID in Settings)
+    .qr("upi", "{{receipt.upi_link}}", 88)
+    .text("upi-caption", "Scan to pay by UPI: {{business.upi_id}}", { fontSize: 9, align: "center", color: GREY })
     .gap(4)
     .text("thanks", "Thank you! See you again soon.", { fontSize: 11, fontWeight: 600, align: "center" });
 });
@@ -306,6 +310,9 @@ const GYM = design({ preset: "thermal80", font: "Montserrat" }, (s) => {
     .totals("totals", ["subtotal", "discount", "tax", "total"], { width: 200, fontSize: 12 })
     .gap(8)
     .text("paid", "Paid by {{receipt.payment_method}}", { fontSize: 10, align: "center" })
+    .gap(4)
+    .qr("upi", "{{receipt.upi_link}}", 88)
+    .text("upi-caption", "Scan to pay by UPI: {{business.upi_id}}", { fontSize: 9, align: "center" })
     .gap(4)
     .text("motto", "Train hard. Stay consistent.", { fontSize: 11, fontWeight: 700, align: "center" });
 });
@@ -652,7 +659,7 @@ export const STARTER_TEMPLATES: StarterTemplate[] = [
     id: "gym-receipt", name: "Gym membership", business: "Gym & fitness", canvas: GYM,
     description: "Member ID, plan and validity on a bold thermal slip.",
     sample: {
-      business: { name: "Iron Pulse Fitness", address: "" },
+      business: { name: "Iron Pulse Fitness", address: "", upi_id: "ironpulse@okaxis" },
       customer: { name: "Rohit Verma" }, receipt: { payment_method: "UPI" }, custom: { member_id: "IPF-0458", valid_till: "31 Jan 2027" },
       items: [{ description: "Quarterly plan", qty: "1", unit_price: "6000" }, { description: "Personal training", qty: "4", unit_price: "500" }, { description: "Locker", qty: "1", unit_price: "300" }],
       tax_percent: "18", discount: "500",

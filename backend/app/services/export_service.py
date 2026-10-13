@@ -90,7 +90,7 @@ def content(
     receipt_number: str, document_type: DocumentType,
 ) -> render_service.ReceiptContent:
     return render_service.ReceiptContent(
-        values=receipt_service.variable_values(data, receipt_number, document_type),
+        values=receipt_service.variable_values(data, receipt_number, document_type, computed.total),
         rows=[item_cells(item) for item in items],
         totals=totals_values(computed),
         tax_rows=tax_rows(computed),
