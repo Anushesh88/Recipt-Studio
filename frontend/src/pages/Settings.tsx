@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { accountKeys, updateAccount, useAccount, type Account } from "../api/account";
 import type { ProfileField } from "../lib/profile";
+import { BrandKitSettings } from "../components/brand/BrandKitSettings";
 import { receiptKeys, useNextNumber } from "../api/receipts";
 import { catalogKeys, forgetCustomer, forgetItem, useSavedCustomers, useSavedItems } from "../api/catalog";
 import { apiErrorMessage } from "../api/client";
@@ -264,6 +265,7 @@ export const Settings: React.FC = () => {
       {isError && <p role="alert" className="text-sm text-destructive">{apiErrorMessage(error, "Couldn't load your settings.")}</p>}
       {/* keyed by account so the form never keeps another account's values */}
       {account ? <SettingsForm key={account.id} account={account} /> : !isError && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {account && <BrandKitSettings account={account} />}
       {account && <SavedLists />}
     </div>
   );

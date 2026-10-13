@@ -3,7 +3,8 @@ import { BaseElementWrapper, type ElementProps } from "./BaseElementWrapper";
 
 const PLACEHOLDER_LABEL = { logo: "Logo", signature: "Signature", image: "Image" } as const;
 
-// `assetSrc` is the resolved URL of props.assetId (fetched by the caller). The
+// `assetSrc` is the resolved URL of props.assetId, or of the brand kit's logo
+// for a logo box without its own (fetched by the caller, useElementAssetUrl). The
 // gray placeholder is a design aid: previews of real receipts turn it off, like
 // the PDF, which draws nothing for an image without a file.
 export const ImageEl = React.forwardRef<HTMLDivElement, ElementProps<"image"> & { assetSrc?: string; showPlaceholder?: boolean }>(
@@ -11,7 +12,7 @@ export const ImageEl = React.forwardRef<HTMLDivElement, ElementProps<"image"> & 
     const { props } = element;
     return (
       <BaseElementWrapper element={element} ref={ref} {...domProps}>
-        {props.assetId && assetSrc ? (
+        {assetSrc ? (
           <img
             src={assetSrc}
             alt={PLACEHOLDER_LABEL[props.source]}

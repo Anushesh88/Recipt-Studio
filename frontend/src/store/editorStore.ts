@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { applyBrand, type Brand } from "../lib/brand";
 import { immer } from "zustand/middleware/immer";
 import type { CanvasElement, Canvas } from "../schema/templateSchema";
 import {
@@ -56,6 +57,8 @@ interface EditorState {
   setDocumentType: (documentType: DocumentType) => void;
   // Adds whatever a GST invoice still lacks (lib/gstTemplate.ts)
   addGstRequirements: () => void;
+  // Restyles the template with the brand kit's colour and fonts (undoable)
+  applyBrandKit: (brand: Brand) => void;
   showNotice: (message: string | null) => void;
 
   setZoom: (zoom: number) => void;
@@ -350,6 +353,14 @@ export const useEditorStore = create<EditorState>()(
           draft.elements.forEach((el) => normalizeElement(draft.page, el));
           renumberZIndex(draft.elements);
           fitAutoPage(draft);
+        }),
+
+      applyBrandKit: (brand) =>
+        set((draft) => {
+          const branded = applyBrand({ page: draft.page, elements: draft.elements } as Canvas, brand);
+          if (branded.elements === draft.elements) return;
+          saveSnapshot(draft);
+          draft.elements = branded.elements;
         }),
 
       showNotice: (message) => {

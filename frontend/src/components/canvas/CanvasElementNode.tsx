@@ -4,7 +4,7 @@ import { useEditorStore } from "../../store/editorStore";
 import { TextEl, ImageEl, TableEl, TotalsEl, QrEl, SignatureEl, DividerEl } from "../elements";
 import { GRID_SIZE, MIN_ELEMENT_SIZE } from "../../lib/units";
 import { floorToGrid, maxGridPosition, snapToGrid } from "../../lib/canvasUtils";
-import { useAssetUrl } from "../../api/assets";
+import { useElementAssetUrl } from "../brand/useBrand";
 import { InlineTextEditor } from "./InlineTextEditor";
 import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
 import { SAMPLE_GST_TAX_ROWS } from "../../lib/gstTemplate";
@@ -32,8 +32,7 @@ export const CanvasElementNode: React.FC<{ id: string }> = React.memo(({ id }) =
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const moveableRef = useRef<Moveable>(null);
 
-  const assetId = element && (element.type === "image" || element.type === "signature") ? element.props.assetId : null;
-  const assetSrc = useAssetUrl(assetId);
+  const assetSrc = useElementAssetUrl(element);
 
   // Synchronize Moveable rect on store updates
   useLayoutEffect(() => {

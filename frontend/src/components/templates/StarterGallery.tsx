@@ -10,6 +10,8 @@ import { PAGE_PRESET_LABELS, type DocumentType } from "../../lib/units";
 import { ReceiptPreview } from "../preview/ReceiptPreview";
 import { useElementWidth } from "../generate/useElementWidth";
 import { starterPreview } from "./starterPreview";
+import { useBrand } from "../brand/useBrand";
+import { applyBrand } from "../../lib/brand";
 
 const THUMBNAIL_HEIGHT = 240;
 const COLLAPSED_COUNT = 4;
@@ -76,12 +78,19 @@ const StarterCard: React.FC<{ starter: StarterTemplate; onError: (message: strin
   );
 };
 
-// Ten receipts and ten GST invoices; GST users see the invoices first
+// Ten receipts and ten GST invoices; GST users see the invoices first. They
+// take on the brand kit (Settings)
 export const StarterGallery: React.FC<{ mode: InvoicingMode | null | undefined; onError: (message: string) => void }> = ({ mode, onError }) => {
   const [chosen, setTab] = useState<DocumentType | null>(null);
   const [expanded, setExpanded] = useState(false);
   const tab = chosen ?? (mode === "gst" ? "gst_invoice" : "receipt");
-  const starters = STARTER_TEMPLATES.filter((s) => s.canvas.documentType === tab);
+  // The brand kit's colour and fonts, in the thumbnails and in the copy
+  const { color, fonts } = useBrand();
+  const branded = useMemo(
+    () => STARTER_TEMPLATES.map((s) => ({ ...s, canvas: applyBrand(s.canvas, { color, fonts }) })),
+    [color, fonts],
+  );
+  const starters = branded.filter((s) => s.canvas.documentType === tab);
   const shown = expanded ? starters : starters.slice(0, COLLAPSED_COUNT);
 
   return (

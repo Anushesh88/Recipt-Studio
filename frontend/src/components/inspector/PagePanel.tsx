@@ -12,6 +12,11 @@ import {
 } from "../../lib/units";
 import { ColorField, Field, NumberField, Section, SelectField } from "./fields";
 import { GstChecklist } from "./GstChecklist";
+import { Link } from "react-router-dom";
+import { Palette } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useBrand } from "../brand/useBrand";
+import { hasBrand } from "../../lib/brand";
 
 const DOCUMENT_OPTIONS = (Object.keys(DOCUMENT_TYPE_LABELS) as DocumentType[]).map((value) => ({
   value,
@@ -30,9 +35,33 @@ export const PagePanel: React.FC = () => {
   const updatePage = useEditorStore((s) => s.updatePage);
   const documentType = useEditorStore((s) => s.documentType);
   const setDocumentType = useEditorStore((s) => s.setDocumentType);
+  const applyBrandKit = useEditorStore((s) => s.applyBrandKit);
+  const showNotice = useEditorStore((s) => s.showNotice);
+  const brand = useBrand();
 
   return (
     <>
+      <Section title="Brand kit">
+        {hasBrand(brand) ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              applyBrandKit(brand);
+              showNotice("Brand colour and fonts applied. Undo puts the old ones back.");
+            }}
+          >
+            <Palette />
+            Apply my brand colour and fonts
+          </Button>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Set a logo, colour and fonts once in <Link to="/settings#brand-kit" className="text-indigo-700 underline">Settings</Link> and every template can use them.
+          </p>
+        )}
+      </Section>
       <Section title="Document">
         <SelectField
           id="document-type"

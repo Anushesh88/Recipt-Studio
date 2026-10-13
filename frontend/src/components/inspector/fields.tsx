@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import { useBrand } from "../brand/useBrand";
+import { lighten } from "../../lib/brand";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,6 +95,9 @@ export const ColorField: React.FC<{ id: string; label: string; value: string; on
   // Hex being typed; null when not editing, so the field follows the store
   const [draft, setDraft] = useState<string | null>(null);
   const shown = draft ?? value;
+  // One tap to the brand kit's colour (and a pale tint of it)
+  const { color: brand } = useBrand();
+  const swatches = brand ? [brand.toUpperCase(), lighten(brand, 0.8)] : [];
 
   return (
     <Field label={label} htmlFor={id}>
@@ -116,6 +121,18 @@ export const ColorField: React.FC<{ id: string; label: string; value: string; on
           }}
           onBlur={() => setDraft(null)}
         />
+        {swatches.map((swatch, i) => (
+          <button
+            key={swatch}
+            type="button"
+            title={i === 0 ? "Brand colour" : "Brand tint"}
+            aria-label={`${label}: ${i === 0 ? "brand colour" : "brand tint"}`}
+            aria-pressed={value.toUpperCase() === swatch}
+            onClick={() => onChange(swatch)}
+            className="size-6 shrink-0 rounded-full border border-border aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1"
+            style={{ background: swatch }}
+          />
+        ))}
       </div>
     </Field>
   );

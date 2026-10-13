@@ -3,7 +3,7 @@ import type { Canvas, CanvasElement } from "../../schema/templateSchema";
 import { applyLayout, BRAND_STRIP_HEIGHT, CONTENT_OVERFLOW } from "../../lib/layout";
 import { BrandStrip } from "../brand/BrandStrip";
 import type { VariableValues } from "../../lib/variables";
-import { useAssetUrl } from "../../api/assets";
+import { useElementAssetUrl } from "../brand/useBrand";
 import { DividerEl, ImageEl, QrEl, SignatureEl, TableEl, TextEl, TotalsEl } from "../elements";
 import { ElementErrorBoundary } from "../elements/ElementErrorBoundary";
 import type { TableRow } from "../elements/TableEl";
@@ -21,8 +21,7 @@ interface ReceiptData {
 }
 
 const PreviewElement: React.FC<{ element: CanvasElement } & ReceiptData> = ({ element, values, rows, totals, taxRows, imagePlaceholders = false }) => {
-  const assetId = element.type === "image" || element.type === "signature" ? element.props.assetId : null;
-  const assetSrc = useAssetUrl(assetId);
+  const assetSrc = useElementAssetUrl(element);
   switch (element.type) {
     case "text":
       return <TextEl element={element} values={values} />;
