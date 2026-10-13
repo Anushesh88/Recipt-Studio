@@ -14,6 +14,11 @@ const OVERLAY = () => {
     #demo-caption { position: fixed; z-index: 99997; left: 50%; bottom: 26px; transform: translateX(-50%); max-width: 82%;
       background: rgba(17,24,39,.92); color: #fff; font: 600 22px/1.35 Inter, system-ui, sans-serif; padding: 12px 24px;
       border-radius: 14px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+    /* Phones: at the top, clear of the app's bottom bars */
+    @media (max-width: 600px) {
+      #demo-caption { bottom: auto; top: 64px; width: 90%; max-width: none; font-size: 19px; padding: 10px 14px; }
+      #demo-card h1 { font-size: 38px; } #demo-card p { font-size: 18px; padding: 0 20px; } #demo-card .url { font-size: 17px; }
+    }
     #demo-card { position: fixed; inset: 0; z-index: 100000; display: flex; flex-direction: column; align-items: center;
       justify-content: center; gap: 14px; background: linear-gradient(135deg,#4338CA,#312E81); color: #fff;
       font-family: Inter, system-ui, sans-serif; text-align: center; }
@@ -92,7 +97,7 @@ test('record the demo', async ({ page }) => {
   await caption(page, 'Receipt Studio: beautiful bills and GST invoices, in seconds');
   await pause(page, 5500);
   await caption(page, '20 ready-made designs for shops, cafés, clinics, tuition and more');
-  await scrollTo(page, 1000);
+  await scrollTo(page, await page.locator('#samples').evaluate((el) => el.getBoundingClientRect().top + window.scrollY - 40));
   await pause(page, 2500);
   await scrollTo(page, 0);
 
