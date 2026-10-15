@@ -70,6 +70,10 @@ def _email(user: User, link: str) -> email_service.Email:
         "<p>Someone (hopefully you) asked to reset your Receipt Studio password.</p>"
         f'<p><a href="{safe}" style="display: inline-block; background: #4338CA; color: #ffffff; padding: 10px 18px; '
         'border-radius: 8px; text-decoration: none">Set a new password</a></p>'
+        # Brevo may route the button through its click tracker, which some
+        # networks block; the address as text is never rewritten
+        '<p style="color: #6B7280; font-size: 13px">If the button doesn\'t open, copy this address into your browser:<br>'
+        f'<span style="color: #111827; word-break: break-all">{safe}</span></p>'
         f"<p style=\"color: #6B7280; font-size: 13px\">The link works for {minutes} minutes, once. If you didn't ask "
         "for this, ignore this email; your password stays the same.</p></div>"
     )

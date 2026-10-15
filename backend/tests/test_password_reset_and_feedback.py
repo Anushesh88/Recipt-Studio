@@ -58,6 +58,8 @@ async def test_a_forgotten_password_is_reset_from_the_emailed_link(
     assert (email.to, email.subject) == ("forgetful@example.com", "Reset your Receipt Studio password")
     token = link_token(email)
     assert token in email.html
+    # Also as plain text (not a link a mail service's click tracker can rewrite)
+    assert email.html.count(token) == 2
 
     reset = await client.post("/auth/reset-password", json={"token": token, "password": "a-brand-new-password"})
     assert reset.status_code == 200
