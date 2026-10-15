@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { canShareFiles, downloadReceipt, shareReceipt, type ExportFormat } from "../../api/exports";
 import type { ReceiptSummary } from "../../api/receipts";
 import { WhatsAppButton } from "./WhatsAppButton";
+import { PrintButton } from "./PrintButton";
 
 // Download buttons for one stored receipt (rendered server-side)
 // `receipt` (when given) adds the WhatsApp button; `layout="card"` puts PDF
@@ -51,6 +52,7 @@ export const ExportButtons: React.FC<{
           </Button>
         )}
         {receipt && <WhatsAppButton receipt={receipt} size={size} />}
+        <PrintButton receiptId={receiptId} receiptNumber={receiptNumber} size={size} />
         {children}
       </div>
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
