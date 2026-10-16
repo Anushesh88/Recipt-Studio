@@ -1,8 +1,9 @@
 # Render's free backend sleeps after 15 quiet minutes and then takes about a
-# minute to answer. This visits /health every 10 minutes so it stays awake.
-# One always-on service uses about 744 of Render's 750 free hours a month.
-# (GitHub may run scheduled jobs a few minutes late, and pauses them after
-# 60 days without commits; the Actions tab can turn it back on.)
+# minute to answer. This visits /health as a backup to an uptime monitor
+# (UptimeRobot, every 5 minutes; see DEPLOY.md): GitHub runs scheduled jobs
+# late, often hours apart, so it can't keep the server awake on its own.
+# A slow wake-up is only a warning, so it doesn't send failure emails; the
+# uptime monitor is what reports real outages.
 name: Keep the backend awake
 
 on:
@@ -21,4 +22,9 @@ jobs:
           BACKEND_URL: ${{ vars.BACKEND_URL || 'https://recipt-studio.onrender.com' }}
         # A sleeping server answers 502 for up to a minute while it wakes, so
         # keep trying for about three minutes before calling it a failure
-        run: curl --fail --silent --show-error --retry 8 --retry-delay 20 --retry-all-errors --max-time 60 "$BACKEND_URL/health"
+        run: |
+          if curl --fail --silent --show-error --retry 8 --retry-delay 20 --retry-all-errors --max-time 60 "$BACKEND_URL/health"; then
+            echo "Awake."
+          else
+            echo "::warning::The backend didn't answer within about 3 minutes (still waking up, or down). The uptime monitor reports real outages."
+          fi

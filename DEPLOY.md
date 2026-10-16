@@ -122,13 +122,20 @@ Database changes (migrations) run by themselves when the backend starts.
 Each of these is already in the code and switches on when you add its
 settings. Nothing breaks while one is off.
 
-### Keep the backend awake (automatic)
-`.github/workflows/keep-awake.yml` visits `/health` every 10 minutes, so
-visitors don't wait a minute for the server to wake. Nothing to set up. If
-your Render address ever changes, add a repository **variable** `BACKEND_URL`
-(GitHub > Settings > Secrets and variables > Actions > Variables). GitHub
-pauses scheduled jobs after 60 days without commits; the **Actions** tab shows
-a button to turn it back on.
+### Keep the backend awake (UptimeRobot, free)
+GitHub runs scheduled jobs late, often hours apart, so the GitHub job
+(`.github/workflows/keep-awake.yml`) is only a backup. An uptime monitor visits
+the server every 5 minutes on time, which keeps it awake, and emails you when
+it's really down.
+1. Sign up at **https://uptimerobot.com** (free plan).
+2. **New monitor**: type **HTTP(s)**, name `Receipt Studio API`, URL
+   `https://recipt-studio.onrender.com/health`, interval **5 minutes**.
+3. Under alert contacts, tick your email, then **Create monitor**.
+
+If your Render address ever changes, update the monitor, and add a repository
+**variable** `BACKEND_URL` for the GitHub job (GitHub > Settings > Secrets and
+variables > Actions > Variables). GitHub pauses scheduled jobs after 60 days
+without commits; the **Actions** tab shows a button to turn it back on.
 
 ### Forgot password (Brevo, free: 300 emails a day)
 Render's free plan blocks normal email (SMTP), so emails go through Brevo's
@@ -191,9 +198,9 @@ over the live one.
 
 ## Good to know
 
-- **Sleeping backend.** The keep-awake job (above) visits it every 10 minutes.
-  If GitHub runs it late, the first visitor may still see "Waking up the
-  server…" for up to a minute. One always-on service uses about 744 of Render's
+- **Sleeping backend.** The uptime monitor (above) visits it every 5 minutes.
+  Without it, the first visitor may see "Waking up the server…" for up to a
+  minute. One always-on service uses about 744 of Render's
   750 free hours a month, so keep only this one service on the free plan.
 - **Storage.** 0.5 GB on Neon is roughly 50,000 or more receipts (each keeps a
   copy of its template). Logos and signatures (at most 2 MB each) are stored in
